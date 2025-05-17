@@ -2,41 +2,77 @@ from PyQt6 import QtGui
 
 
 class Colors:
-    """Color scheme for the application."""
-    PRIMARY = "#2C3E50"
-    SECONDARY = "#34495E"
-    ACCENT = "#E74C3C"
-    ACCENT_LIGHT = "#F39C12"
-    BACKGROUND_LIGHT = "#ECF0F1"
-    BACKGROUND_DARK = "#2C3E50"
-    TEXT_LIGHT = "#FFFFFF"
-    TEXT_DARK = "#2C3E50"
-    SUCCESS = "#2ECC71"
-    WARNING = "#F39C12"
-    DANGER = "#E74C3C"
-    INFO = "#3498DB"
-    HR_NORMAL = "#2ECC71"  # Green
-    HR_WARNING = "#F39C12"  # Orange
-    HR_DANGER = "#E74C3C"  # Red
-    HR_GRAPH = "#E74C3C"   # Red
-    HR_GRAPH_FILL = "#FADBD8"  # Light red
+    """Color constants for use throughout the application."""
+    # Main colors (Material Design palette)
+    PRIMARY = "#E91E63"  # Pink 500
+    PRIMARY_DARK = "#C2185B"  # Pink 700
+    PRIMARY_LIGHT = "#F8BBD0"  # Pink 100
+    ACCENT = "#2196F3"  # Blue 500
+    
+    # Text colors
+    TEXT_PRIMARY = "#212121"  # Grey 900
+    TEXT_SECONDARY = "#757575"  # Grey 600
+    TEXT_DISABLED = "#9E9E9E"  # Grey 500
+    
+    # Background colors
+    BG_LIGHT = "#FFFFFF"  # White
+    BG_MEDIUM = "#F5F5F5"  # Grey 100
+    BG_DARK = "#EEEEEE"  # Grey 200
+    
+    # Status colors
+    STATUS_NORMAL = "#4CAF50"  # Green 500
+    STATUS_WARNING = "#FFC107"  # Amber 500
+    STATUS_DANGER = "#F44336"  # Red 500
+    
+    # Heart rate specific colors with hex codes for easier use
+    HR_LOW = "#F44336"  # Red 500
+    HR_LOW_HEX = "#F44336"
+    HR_NORMAL = "#4CAF50"  # Green 500 
+    HR_NORMAL_HEX = "#4CAF50"
+    HR_HIGH = "#F44336"  # Red 500
+    HR_HIGH_HEX = "#F44336"
+    HR_WARNING = "#FFC107"  # Amber 500
+    HR_WARNING_HEX = "#FFC107"
 
 
 class Fonts:
-    """Font definitions for the application."""
-    FAMILY = "Segoe UI"
-    SMALL = QtGui.QFont(FAMILY, 9)
-    NORMAL = QtGui.QFont(FAMILY, 10)
-    MEDIUM = QtGui.QFont(FAMILY, 12)
-    LARGE = QtGui.QFont(FAMILY, 16)
-    EXTRA_LARGE = QtGui.QFont(FAMILY, 24)
+    """Font constants for use throughout the application."""
+    FAMILY = "'Segoe UI', Arial, sans-serif"
+    TITLE = "18px"
+    SUBTITLE = "14px"
+    BODY = "12px"
+    SMALL = "10px"
 
-    # Bold variants
-    SMALL_BOLD = QtGui.QFont(FAMILY, 9, QtGui.QFont.Weight.Bold)
-    NORMAL_BOLD = QtGui.QFont(FAMILY, 10, QtGui.QFont.Weight.Bold)
-    MEDIUM_BOLD = QtGui.QFont(FAMILY, 12, QtGui.QFont.Weight.Bold)
-    LARGE_BOLD = QtGui.QFont(FAMILY, 16, QtGui.QFont.Weight.Bold)
-    EXTRA_LARGE_BOLD = QtGui.QFont(FAMILY, 24, QtGui.QFont.Weight.Bold)
+
+class Layout:
+    """Layout constants for use throughout the application."""
+    MARGIN = 16
+    PADDING = 8
+    RADIUS = 4
+    VIDEO_MIN_WIDTH = 480
+    VIDEO_MIN_HEIGHT = 360
+
+
+def apply_stylesheet(widget, stylesheet_func):
+    """Apply a style sheet to a widget."""
+    if callable(stylesheet_func):
+        widget.setStyleSheet(stylesheet_func())
+    else:
+        widget.setStyleSheet(stylesheet_func)
+
+
+def get_heart_rate_color(hr):
+    """Get the appropriate color for a heart rate value."""
+    if hr < 50:
+        return Colors.HR_LOW
+    elif hr < 60:
+        return Colors.HR_WARNING
+    elif hr <= 90:
+        return Colors.HR_NORMAL
+    elif hr <= 100:
+        return Colors.HR_WARNING
+    else:
+        return Colors.HR_HIGH
 
 
 class StyleSheets:
@@ -51,7 +87,10 @@ class StyleSheets:
         """Get the main window stylesheet."""
         return f"""
             QMainWindow {{
-                background-color: {Colors.BACKGROUND_LIGHT};
+                background-color: #f8f9fa;
+                color: {Colors.TEXT_PRIMARY};
+                font-family: {Fonts.FAMILY};
+                font-size: {Fonts.BODY};
             }}
         """
 
@@ -60,102 +99,89 @@ class StyleSheets:
         """Get the title label style."""
         return f"""
             QLabel {{
-                color: {Colors.PRIMARY};
-                font-family: {Fonts.FAMILY};
-                font-size: 20px;
+                color: {Colors.TEXT_PRIMARY};
+                font-size: {Fonts.TITLE};
                 font-weight: bold;
-                padding: 10px;
+                margin-bottom: {Layout.MARGIN}px;
+            }}
+        """
+
+    @staticmethod
+    def get_subtitle_label_style():
+        """Get the subtitle label style."""
+        return f"""
+            QLabel {{
+                color: {Colors.TEXT_PRIMARY};
+                font-size: {Fonts.SUBTITLE};
+                font-weight: bold;
+                margin-bottom: {Layout.MARGIN / 2}px;
             }}
         """
 
     @staticmethod
     def get_status_label_style(status="normal"):
         """Get the status label style based on the current status."""
-        if status == "normal":
-            bg_color = Colors.SUCCESS
-        elif status == "warning":
-            bg_color = Colors.WARNING
-        elif status == "danger":
-            bg_color = Colors.DANGER
-        else:
-            bg_color = Colors.INFO
-            
+        status_color = {
+            "normal": Colors.STATUS_NORMAL,
+            "warning": Colors.STATUS_WARNING,
+            "danger": Colors.STATUS_DANGER
+        }.get(status, Colors.STATUS_NORMAL)
+        
         return f"""
             QLabel {{
-                color: {Colors.TEXT_LIGHT};
-                background-color: {bg_color};
-                font-family: {Fonts.FAMILY};
-                font-size: 14px;
-                padding: 8px;
-                border-radius: 4px;
+                background-color: #ffffff;
+                color: {status_color};
+                font-size: {Fonts.BODY};
+                padding: {Layout.PADDING}px;
+                border-radius: {Layout.RADIUS}px;
+                font-weight: bold;
+                border: 1px solid #e0e0e0;
             }}
         """
-
+    
     @staticmethod
     def get_button_style():
         """Get the button style."""
         return f"""
             QPushButton {{
                 background-color: {Colors.PRIMARY};
-                color: {Colors.TEXT_LIGHT};
-                font-family: {Fonts.FAMILY};
-                font-size: 12px;
+                color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: {Layout.RADIUS}px;
                 padding: 8px 16px;
+                font-weight: bold;
             }}
-            
             QPushButton:hover {{
-                background-color: {Colors.SECONDARY};
+                background-color: {Colors.PRIMARY_DARK};
             }}
-            
             QPushButton:pressed {{
-                background-color: {Colors.ACCENT};
+                background-color: {Colors.PRIMARY_DARK};
             }}
-            
             QPushButton:disabled {{
-                background-color: #95A5A6;
-                color: #7F8C8D;
+                background-color: {Colors.BG_DARK};
+                color: {Colors.TEXT_DISABLED};
             }}
         """
 
-    STATUS_LABEL = lambda: StyleSheets.get_status_label_style("normal")
-
-
-class Layout:
-    """Layout constants and styling helper methods."""
-    MARGIN = 10
-    SPACING = 10
-    PADDING = 20
-    BUTTON_HEIGHT = 30
-    BUTTON_WIDTH = 100
-    VIDEO_MIN_HEIGHT = 360
-    VIDEO_MIN_WIDTH = 480
-    HEART_RATE_DISPLAY_HEIGHT = 120
-
-
-def get_heart_rate_color(heart_rate):
-    """Get color based on the heart rate value."""
-    if heart_rate < 50 or heart_rate > 100:
-        return Colors.HR_DANGER
-    elif heart_rate < 60 or heart_rate > 90:
-        return Colors.HR_WARNING
-    else:
-        return Colors.HR_NORMAL
-
-
-def apply_stylesheet(widget, stylesheet_function):
-    """Helper function to apply a stylesheet to a widget.
-    
-    Args:
-        widget: The widget to apply the stylesheet to.
-        stylesheet_function: A function that returns a stylesheet.
+    # Status label style
+    STATUS_LABEL = f"""
+        QLabel {{
+            background-color: #ffffff;
+            color: {Colors.TEXT_SECONDARY};
+            border: 1px solid #e0e0e0;
+            padding: {Layout.PADDING}px;
+            border-radius: {Layout.RADIUS}px;
+        }}
     """
-    if callable(stylesheet_function):
-        # If it's a function, call it to get the stylesheet
-        stylesheet = stylesheet_function()
-    else:
-        # Otherwise, assume it's the stylesheet itself
-        stylesheet = stylesheet_function
-    
-    StyleSheets.apply_style(widget, stylesheet)
+
+    @staticmethod
+    def get_hr_display_style(hr_color):
+        """Generate heart rate display stylesheet with specified color."""
+        return f"""
+            QLabel {{
+                background-color: {Colors.BG_MEDIUM};
+                border-radius: 8px;
+                padding: {Layout.PADDING}px;
+                color: {hr_color};
+            }}
+        """
