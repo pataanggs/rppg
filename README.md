@@ -1,7 +1,7 @@
 # rPPG Heart Rate Monitor
 
 <div align="center">
-  <img src="assets/icon.png" alt="rPPG Heart Rate Monitor Logo" width="120">
+  <img src="https://i.pinimg.com/474x/01/a1/31/01a131f0c5749c9daf0a45fcc7572c2e.jpg" alt="Logo sementara aja" width="120">
   <h3>Non-invasive Heart Rate Monitoring Using Regular Camera</h3>
 </div>
 
