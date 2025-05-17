@@ -22,17 +22,17 @@ rPPG Heart Rate Monitor is an innovative application that uses remote photopleth
 
 | Full Name | Student ID (NIM) | GitHub ID |
 |-----------|------------------|-----------|
-| [FATHAN ANDI KARTAGAMA] | [122140055] | [@pataanggs] |
-| [RAHMAT ALDI NASDA] | [122140077] | [@urbaee] |
-| [CHANDRA BUDI WIJAYA] | [122140093] | [@ChandraBudiWijaya] |
+| FATHAN ANDI KARTAGAMA | 122140055 | @pataanggs |
+| RAHMAT ALDI NASDA | 122140077 | @urbaee |
+| CHANDRA BUDI WIJAYA | 122140093 | @ChandraBudiWijaya |
 
 ## 📝 Weekly Logbook
 
 | Week | Date | Activities | Progress |
 |------|------|------------|----------|
-| 1 | May 3, 2024 | - Project initialization<br>- Basic folder structure setup<br>- Initial repository setup | Created basic application structure and project environment with initial commit |
-| 2 | May 5, 2024 | - Implemented face detection using MediaPipe<br>- Added camera selection<br>- Implemented rPPG heart rate estimation<br>- Created UI with heart rate graph<br>- Added alarm with mute functionality<br>- Implemented face detection feedback<br>- Added settings for signal processing and display | Successfully created core functionality with face detection and heart rate monitoring features |
-| 3 | July 15, 2024 | - Updated README documentation<br>- Corrected project timeline<br>- Improved documentation structure | Enhanced project documentation with accurate timeline and comprehensive details |
+| 1 | May 3, 2024 | - Project initialization<br>- Basic folder structure setup<br>- Initial repository setup | 20% - Basic project structure and environment setup completed |
+| 2 | May 5, 2024 | - Implemented face detection using MediaPipe<br>- Added camera selection<br>- Implemented rPPG heart rate estimation<br>- Created UI with heart rate graph<br>- Added alarm with mute functionality<br>- Implemented face detection feedback<br>- Added settings for signal processing and display | 60% - Core functionality implemented including face detection, heart rate monitoring and UI features |
+| 3 | May 17, 2025 | - Extensive code refactoring for better organization<br>- Updated README documentation with detailed sections<br>- Added signal processing module for improved accuracy<br>- Implemented plot canvas for real-time visualization<br>- Created utils module for shared functionality<br>- Added camera selector interface<br>- Improved code structure and maintainability | 80% - Major refactoring completed with enhanced visualization, documentation and code organization |
 
 ## 💻 Installation
 
