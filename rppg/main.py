@@ -1,6 +1,6 @@
 import sys
 from PyQt6 import QtWidgets
-from camera_selector import CameraSelector
+from rppg.camera_selector import CameraSelector
 from ui.main_window import MainWindow
 
 if __name__ == "__main__":
