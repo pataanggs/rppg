@@ -6,7 +6,7 @@ from threads.video_thread import VideoThread, rppg_signal, time_data
 from plot_canvas import MplCanvas
 from signal_processing import bandpass_filter, calculate_heart_rate, calculate_respiration_rate
 from utils import convert_cv_qt
-from sound import setup_alarm_sound, toggle_alarm_sound
+from core.sound import setup_alarm_sound, toggle_alarm_sound
 from ui.components import create_video_container, create_vital_cards, create_status_bar, create_exit_dialog
 from ui.styles import STYLESHEET, VIDEO_CONTAINER_STYLE, STATUS_BAR_STYLE, BUTTON_STYLE
 
