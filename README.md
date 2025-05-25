@@ -22,29 +22,31 @@ rPPG Heart Rate Monitor is an innovative application that uses remote photopleth
 
 ## 📁 Project Structure
 
+```plaintext
 RPPG-PROJECT/
-├── assets/                  # For images, fonts, etc.
-├── rppg/                    # Main application module (UI, threads, etc.)
-│   ├── init.py
-│   ├── main.py              # Entry point for the PyQt application
-│   ├── main_window.py       # MainWindow class definition
-│   ├── components.py        # Additional UI widgets (modular UI)
-│   ├── camera_selector.py   # Dialog or logic for camera selection
-│   ├── plot_canvas.py       # Widget for plotting rPPG signals
-│   ├── styles.py            # PyQt style sheets
+├── assets/               # For images, fonts, etc.
+├── rppg/                 # Main application module (UI, threads, etc.)
+│   ├── __init__.py
+│   ├── main.py           # Entry point for the PyQt application
+│   ├── main_window.py    # MainWindow class definition
+│   ├── components.py     # Additional UI widgets (modular UI)
+│   ├── camera_selector.py# Dialog or logic for camera selection
+│   ├── plot_canvas.py    # Widget for plotting rPPG signals
+│   ├── styles.py         # PyQt style sheets
 │   └── threads/
-│       ├── init.py
-│       └── video_thread.py  # QThread for video capture + rPPG processing
-├── signal/                  # Module for signal processing
-│   ├── init.py
-│   └── processing.py        # rPPG signal extraction, filtering, CHROM, etc.
-├── core/                    # Supporting functions or non-GUI logic
-│   ├── init.py
-│   ├── sound.py             # Audio feedback (optional)
-│   └── utils.py             # General utility/helper functions
-├── requirements.txt         # Python dependencies
-├── readme.md                # Project documentation
-└── run.py                   # Main entry point (optional for clean separation, or main.py directly)
+│       ├── __init__.py
+│       └── video_thread.py # QThread for video capture + rPPG processing
+├── signal/               # Module for signal processing
+│   ├── __init__.py
+│   └── processing.py     # rPPG signal extraction, filtering, CHROM, etc.
+├── core/                 # Supporting functions or non-GUI logic
+│   ├── __init__.py
+│   ├── sound.py          # Audio feedback (optional)
+│   └── utils.py          # General utility/helper functions
+├── requirements.txt      # Python dependencies
+├── readme.md             # Project documentation
+└── run.py                # Main entry point (optional)
+
 
 
 ## 👥 Team Members
