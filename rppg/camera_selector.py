@@ -167,4 +167,4 @@ class CameraSelector(QtWidgets.QDialog):
         if self.cap is not None:
             self.cap.release()
             self.cap = None
-        event.accept()
+        event.accept() 
