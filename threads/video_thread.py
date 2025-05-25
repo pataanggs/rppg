@@ -14,7 +14,8 @@ class VideoThread(threading.Thread):
     
     class Signals(QObject):
         frame_update = pyqtSignal(object)
-        hr_update = pyqtSignal(float)
+        # Changed hr_update to emit both float (HR) and bool (is_valid)
+        hr_update = pyqtSignal(float, bool) 
         face_detected = pyqtSignal(bool)
         signal_quality_update = pyqtSignal(float)
 
@@ -31,6 +32,8 @@ class VideoThread(threading.Thread):
         self.cap = cv2.VideoCapture(camera_index)
         if not self.cap.isOpened():
             print(f"Error: Unable to open camera {camera_index}")
+            # It's good practice to set running to False if camera fails to open
+            self.running = False 
             return
             
         # Set camera properties for higher FPS
@@ -39,7 +42,7 @@ class VideoThread(threading.Thread):
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         self.cap.set(cv2.CAP_PROP_FPS, 60)  # Request 60fps from camera
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # Set smaller buffer size for lower latency
-        self.running = False
+        self.running = False # Will be set to True in run()
         
         # Initialize face detection (both MediaPipe and traditional Haar cascade as fallback)
         self.mp_face_detection = self._initialize_mp_face_detection()
@@ -90,6 +93,14 @@ class VideoThread(threading.Thread):
         # Use lower resolution for processing to improve performance
         self.process_width = 240  # Even lower resolution for processing (was 320)
         self.process_height = 180  # Even lower resolution for processing (was 240)
+
+        # Bounding box smoothing variables
+        self.smoothed_bbox = None
+        self.smoothing_alpha = 0.7 # Alpha for exponential moving average. Higher means less smoothing.
+        self.mediapipe_fail_count = 0
+        self.mediapipe_fallback_threshold = 15 # Number of frames MediaPipe can fail before switching to Haar
+        self.haar_active_time = 0
+        self.haar_switch_back_delay = 2.0 # Seconds before attempting to switch back to MediaPipe from Haar
 
     def _initialize_mp_face_detection(self):
         """Initialize MediaPipe face detection."""
@@ -171,33 +182,41 @@ class VideoThread(threading.Thread):
             display_frame = cv2.flip(display_frame, 1)
             process_frame = cv2.flip(process_frame, 1)
             
-            # Try to detect face with MediaPipe first
             face_detected_in_frame = False
             
-            # Only run face detection at intervals to improve performance
-            if current_time - last_detection_time > detection_interval:
-                # Simpler approach - select based on current FPS rather than trying multiple
-                if current_fps < 15:  # Low FPS, use fastest method
-                    # Use Haar cascade (fastest but least accurate)
-                    gray = cv2.cvtColor(process_frame, cv2.COLOR_BGR2GRAY)
-                    faces = self.haar_face_cascade.detectMultiScale(
-                        gray, scaleFactor=1.2, minNeighbors=4, minSize=(30, 30))
-                    if len(faces) > 0:
-                        face_detected_in_frame = self._process_haar_faces(
-                            display_frame, process_frame, faces, face_frames, timestamps)
-                        self.active_detector = "haar"
+            # --- Refined Detector Switching Logic ---
+            # Prioritize MediaPipe. Only switch to Haar if MediaPipe consistently fails.
+            # Attempt to switch back to MediaPipe after a delay if Haar is active.
+            
+            if self.active_detector == "mediapipe":
+                frame_rgb = cv2.cvtColor(process_frame, cv2.COLOR_BGR2RGB)
+                face_results = self.mp_face_detection.process(frame_rgb)
+                if face_results and face_results.detections:
+                    face_detected_in_frame = self._process_face_detections(
+                        display_frame, process_frame, face_results.detections, face_frames, timestamps)
+                    self.mediapipe_fail_count = 0 # Reset fail count on successful detection
                 else:
-                    # Convert frame to RGB for MediaPipe
-                    frame_rgb = cv2.cvtColor(process_frame, cv2.COLOR_BGR2RGB)
-                    
-                    # Use MediaPipe face detection (better accuracy but more CPU intensive)
-                    face_results = self.mp_face_detection.process(frame_rgb)
-                    if face_results and face_results.detections:
-                        face_detected_in_frame = self._process_face_detections(
-                            display_frame, process_frame, face_results.detections, face_frames, timestamps)
-                        self.active_detector = "mediapipe"
+                    self.mediapipe_fail_count += 1
+                    if self.mediapipe_fail_count > self.mediapipe_fallback_threshold:
+                        print("MediaPipe failed consistently, falling back to Haar.")
+                        self.active_detector = "haar"
+                        self.haar_active_time = current_time # Record time of switch
+            
+            if self.active_detector == "haar":
+                gray = cv2.cvtColor(process_frame, cv2.COLOR_BGR2GRAY)
+                faces = self.haar_face_cascade.detectMultiScale(
+                    gray, scaleFactor=1.2, minNeighbors=4, minSize=(30, 30))
+                if len(faces) > 0:
+                    face_detected_in_frame = self._process_haar_faces(
+                        display_frame, process_frame, faces, face_frames, timestamps)
                 
-                last_detection_time = current_time
+                # Attempt to switch back to MediaPipe after a delay
+                if current_time - self.haar_active_time > self.haar_switch_back_delay:
+                    print("Attempting to switch back to MediaPipe.")
+                    self.active_detector = "mediapipe"
+                    self.mediapipe_fail_count = 0 # Reset fail count for MediaPipe
+            
+            # --- End Refined Detector Switching Logic ---
             
             # Check if face has been lost
             if face_detected_in_frame:
@@ -210,15 +229,16 @@ class VideoThread(threading.Thread):
                 print("Face lost!")
                 self.has_face = False
                 self.face_detected.emit(False)
-                # Reset ROIs when face is lost
+                # Reset ROIs and smoothed bbox when face is lost
                 self.forehead_roi = None
                 self.left_cheek_roi = None
                 self.right_cheek_roi = None
+                self.smoothed_bbox = None # Reset smoothed bbox
             
             # Calculate and emit heart rate at regular intervals - reduced frequency
             if len(face_frames) > self.window_size and current_time - self.last_hr_update_time > self.hr_update_interval:
                 self._process_ppg_signal(face_frames[-self.window_size:], 
-                                       timestamps[-self.window_size:])
+                                         timestamps[-self.window_size:])
                 self.last_hr_update_time = current_time
             
             # Add fps and other info to frame
@@ -378,64 +398,78 @@ class VideoThread(threading.Thread):
     def _process_face_detections(self, display_frame, process_frame, detections, face_frames, timestamps):
         """Process the MediaPipe face detections and extract rPPG signal."""
         processed_face = False
-        for detection in detections:
-            bbox = detection.location_data.relative_bounding_box
-            ih, iw, _ = process_frame.shape
-            x, y = int(bbox.xmin * iw), int(bbox.ymin * ih)
-            w, h = int(bbox.width * iw), int(bbox.height * ih)
+        if not detections:
+            return False
+
+        # Get the first detection
+        detection = detections[0]
+        bbox = detection.location_data.relative_bounding_box
+        ih, iw, _ = process_frame.shape
+        x, y = int(bbox.xmin * iw), int(bbox.ymin * ih)
+        w, h = int(bbox.width * iw), int(bbox.height * ih)
+        
+        # Apply smoothing to the bounding box
+        current_bbox = np.array([x, y, w, h], dtype=np.float32)
+        if self.smoothed_bbox is None:
+            self.smoothed_bbox = current_bbox
+        else:
+            self.smoothed_bbox = self.smoothing_alpha * current_bbox + \
+                                 (1 - self.smoothing_alpha) * self.smoothed_bbox
+        
+        # Use smoothed bounding box for drawing and ROI extraction
+        smoothed_x, smoothed_y, smoothed_w, smoothed_h = map(int, self.smoothed_bbox)
+
+        # Check if the smoothed bounding box is valid
+        if smoothed_x < 0 or smoothed_y < 0 or smoothed_w <= 0 or smoothed_h <= 0 or \
+           smoothed_x + smoothed_w > iw or smoothed_y + smoothed_h > ih:
+            return False
+        
+        # Scale coordinates for display frame
+        display_h, display_w = display_frame.shape[:2]
+        scale_x = display_w / iw
+        scale_y = display_h / ih
+        
+        # Draw bounding box on display frame if enabled
+        if self.show_face_rect:
+            display_x = int(smoothed_x * scale_x)
+            display_y = int(smoothed_y * scale_y)
+            display_w = int(smoothed_w * scale_x)
+            display_h = int(smoothed_h * scale_y)
+            cv2.rectangle(display_frame, 
+                          (display_x, display_y), 
+                          (display_x + display_w, display_y + display_h), 
+                          (0, 255, 0), 2)
+        
+        # Define forehead ROI relative to the smoothed face bounding box
+        forehead_x = smoothed_x + int(smoothed_w * 0.2)
+        forehead_y = smoothed_y + int(smoothed_h * 0.1)
+        forehead_w = int(smoothed_w * 0.6)
+        forehead_h = int(smoothed_h * 0.15)
+        
+        # Ensure forehead ROI is valid
+        if forehead_x >= 0 and forehead_y >= 0 and forehead_w > 0 and forehead_h > 0 and \
+           forehead_x + forehead_w <= iw and forehead_y + forehead_h <= ih:
             
-            # Check if the bounding box is valid
-            if x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > iw or y + h > ih:
-                continue
+            # Extract forehead ROI from process frame
+            forehead_roi = process_frame[forehead_y:forehead_y + forehead_h, 
+                                         forehead_x:forehead_x + forehead_w]
             
-            # Scale coordinates for display frame
-            display_h, display_w = display_frame.shape[:2]
-            scale_x = display_w / iw
-            scale_y = display_h / ih
-            
-            # Draw bounding box on display frame if enabled
+            # Draw forehead ROI on display frame if enabled
             if self.show_face_rect:
-                display_x = int(x * scale_x)
-                display_y = int(y * scale_y)
-                display_w = int(w * scale_x)
-                display_h = int(h * scale_y)
+                display_fx = int(forehead_x * scale_x)
+                display_fy = int(forehead_y * scale_y)
+                display_fw = int(forehead_w * scale_x)
+                display_fh = int(forehead_h * scale_y)
                 cv2.rectangle(display_frame, 
-                             (display_x, display_y), 
-                             (display_x + display_w, display_y + display_h), 
-                             (0, 255, 0), 2)
+                              (display_fx, display_fy), 
+                              (display_fx + display_fw, display_fy + display_fh), 
+                              (0, 255, 255), 2)
             
-            # Define forehead ROI relative to the face bounding box
-            forehead_x = x + int(w * 0.2)
-            forehead_y = y + int(h * 0.1)
-            forehead_w = int(w * 0.6)
-            forehead_h = int(h * 0.15)
-            
-            # Ensure forehead ROI is valid
-            if forehead_x >= 0 and forehead_y >= 0 and forehead_w > 0 and forehead_h > 0 and \
-               forehead_x + forehead_w <= iw and forehead_y + forehead_h <= ih:
-                
-                # Extract forehead ROI from process frame
-                forehead_roi = process_frame[forehead_y:forehead_y + forehead_h, 
-                                        forehead_x:forehead_x + forehead_w]
-                
-                # Draw forehead ROI on display frame if enabled
-                if self.show_face_rect:
-                    display_fx = int(forehead_x * scale_x)
-                    display_fy = int(forehead_y * scale_y)
-                    display_fw = int(forehead_w * scale_x)
-                    display_fh = int(forehead_h * scale_y)
-                    cv2.rectangle(display_frame, 
-                                 (display_fx, display_fy), 
-                                 (display_fx + display_fw, display_fy + display_fh), 
-                                 (0, 255, 255), 2)
-                
-                # Get signal from the forehead region (green channel average)
-                if forehead_roi.size > 0:
-                    green_avg = np.mean(forehead_roi[:, :, 1])
-                    face_frames.append(green_avg)
-                    processed_face = True
-            
-            break  # Process only the first valid face
+            # Get signal from the forehead region (green channel average)
+            if forehead_roi.size > 0:
+                green_avg = np.mean(forehead_roi[:, :, 1])
+                face_frames.append(green_avg)
+                processed_face = True
         
         return processed_face
 
@@ -448,6 +482,17 @@ class VideoThread(threading.Thread):
         largest_face = max(faces, key=lambda rect: rect[2] * rect[3])
         x, y, w, h = largest_face
         
+        # Apply smoothing to the bounding box
+        current_bbox = np.array([x, y, w, h], dtype=np.float32)
+        if self.smoothed_bbox is None:
+            self.smoothed_bbox = current_bbox
+        else:
+            self.smoothed_bbox = self.smoothing_alpha * current_bbox + \
+                                 (1 - self.smoothing_alpha) * self.smoothed_bbox
+        
+        # Use smoothed bounding box for drawing and ROI extraction
+        smoothed_x, smoothed_y, smoothed_w, smoothed_h = map(int, self.smoothed_bbox)
+
         # Scale coordinates for display frame
         display_h, display_w = display_frame.shape[:2]
         process_h, process_w = process_frame.shape[:2]
@@ -456,20 +501,20 @@ class VideoThread(threading.Thread):
         
         # Draw bounding box on display frame if enabled
         if self.show_face_rect:
-            display_x = int(x * scale_x)
-            display_y = int(y * scale_y)
-            display_w = int(w * scale_x)
-            display_h = int(h * scale_y)
+            display_x = int(smoothed_x * scale_x)
+            display_y = int(smoothed_y * scale_y)
+            display_w = int(smoothed_w * scale_x)
+            display_h = int(smoothed_h * scale_y)
             cv2.rectangle(display_frame, 
-                         (display_x, display_y), 
-                         (display_x + display_w, display_y + display_h), 
-                         (255, 0, 0), 2)
+                          (display_x, display_y), 
+                          (display_x + display_w, display_y + display_h), 
+                          (255, 0, 0), 2)
         
         # Define forehead ROI
-        forehead_x = x + int(w * 0.25)
-        forehead_y = y + int(h * 0.1)
-        forehead_w = int(w * 0.5)
-        forehead_h = int(h * 0.15)
+        forehead_x = smoothed_x + int(smoothed_w * 0.25)
+        forehead_y = smoothed_y + int(smoothed_h * 0.1)
+        forehead_w = int(smoothed_w * 0.5)
+        forehead_h = int(smoothed_h * 0.15)
         
         # Check if ROI is valid
         if forehead_x >= 0 and forehead_y >= 0 and forehead_w > 0 and forehead_h > 0 and \
@@ -477,7 +522,7 @@ class VideoThread(threading.Thread):
             
             # Extract forehead ROI from process frame
             forehead_roi = process_frame[forehead_y:forehead_y + forehead_h, 
-                                    forehead_x:forehead_x + forehead_w]
+                                         forehead_x:forehead_x + forehead_w]
             
             # Draw ROI on display frame if enabled
             if self.show_face_rect:
@@ -486,9 +531,9 @@ class VideoThread(threading.Thread):
                 display_fw = int(forehead_w * scale_x)
                 display_fh = int(forehead_h * scale_y)
                 cv2.rectangle(display_frame, 
-                             (display_fx, display_fy), 
-                             (display_fx + display_fw, display_fy + display_fh), 
-                             (255, 0, 255), 2)
+                              (display_fx, display_fy), 
+                              (display_fx + display_fw, display_fy + display_fh), 
+                              (255, 0, 255), 2)
             
             # Get signal if ROI is not empty
             if forehead_roi.size > 0:
@@ -503,14 +548,22 @@ class VideoThread(threading.Thread):
         # Use SignalProcessor class for better isolation of concerns
         hr, confidence = self.signal_processor.process(signal, timestamps)
         
+        is_valid_hr = False
         if hr is not None and self.min_hr <= hr <= self.max_hr:
             self.current_hr = hr
             self.confidence = confidence
-            self.hr_update.emit(hr)
+            is_valid_hr = True # Set to True if HR is valid
+        else:
+            # If HR is not valid, reset current_hr and confidence
+            self.current_hr = 0 
+            self.confidence = 0
             
-            # Emit signal quality (from signal processor)
-            signal_quality = self.signal_processor.signal_quality * 100  # Convert to 0-100 scale
-            self.signal_quality_update.emit(signal_quality)
+        # Emit both heart rate and validity flag
+        self.hr_update.emit(self.current_hr, is_valid_hr)
+            
+        # Emit signal quality (from signal processor)
+        signal_quality = self.signal_processor.signal_quality * 100  # Convert to 0-100 scale
+        self.signal_quality_update.emit(signal_quality)
 
     def set_settings(self, settings):
         """Update thread settings."""
@@ -576,4 +629,3 @@ class FPSCounter:
             
         # Return frames per second
         return (len(self.frame_times) - 1) / time_diff
-

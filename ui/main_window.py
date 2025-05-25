@@ -476,7 +476,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_video(self):
         self.video_thread = VideoThread(camera_index=self.camera_index)
         self.video_thread.frame_update.connect(self.update_frame)
-        self.video_thread.hr_update.connect(self.update_heart_rate)
+        # CONNECT SIGNAL DIRECTLY TO THE ARGUMENTS
+        self.video_thread.hr_update.connect(self.update_heart_rate) 
         self.video_thread.face_detected.connect(self.update_face_status)
         self.video_thread.signal_quality_update.connect(self.update_signal_quality)
         self.video_thread.start()
@@ -485,11 +486,12 @@ class MainWindow(QtWidgets.QMainWindow):
         qt_img = self.convert_cv_to_qt(frame)
         self.video_label.setPixmap(qt_img)
         
-    def update_heart_rate(self, hr_data):
+    # MODIFIED: Changed signature from (self, hr_data) to (self, hr, is_valid)
+    def update_heart_rate(self, hr, is_valid):
         """Update heart rate value and graph."""
-        hr, is_valid = hr_data
+        # Removed: hr, is_valid = hr_data # This line is no longer needed
         
-        # Store the data but don't update widgets directly
+        # Store the data but don't update widgets directly (still a good practice for performance)
         self._current_hr = hr
         self._hr_valid = is_valid
         
@@ -498,6 +500,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _do_heart_rate_update(self):
         """Actually perform the heart rate update after deferring to break recursion."""
+        # Added a check if _current_hr exists, in case _do_heart_rate_update fires too early
         if not hasattr(self, '_current_hr'):
             return
 
@@ -839,7 +842,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Store the value but don't update the widget directly
         self._signal_quality = quality
         # Schedule update for the next event loop cycle to break potential recursion
-        QtCore.QTimer.singleShot(0, lambda: self.signal_quality.setValue(int(self._signal_quality * 100)))
+        QtCore.QTimer.singleShot(0, lambda: self.signal_quality.setValue(int(self._signal_quality))) # Multiplying by 100 for 0-100 scale is already done in VideoThread
     
     def update_time_range(self, index):
         """Update the graph time range."""
@@ -966,13 +969,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.hr_data:
             avg = sum(self.hr_data) / len(self.hr_data)
             self.avg_hr.setText(f"{avg:.1f}")
-            
-            # Update color based on avg HR
-            if avg < 60:
-                self.avg_hr.setStyleSheet("color: #fab387; font-size: 18px; font-weight: bold;")
-            elif avg > 100:
-                self.avg_hr.setStyleSheet("color: #f38ba8; font-size: 18px; font-weight: bold;")
-            else:
-                self.avg_hr.setStyleSheet("color: #a6e3a1; font-size: 18px; font-weight: bold;")
+            self._update_avg_hr_style(avg) # Call helper method for styling
         else:
             self.avg_hr.setStyleSheet("color: #cdd6f4; font-size: 18px; font-weight: bold;")
+
+    def _update_avg_hr_style(self, avg_hr_value):
+        """Updates the style of the average HR display based on its value."""
+        if avg_hr_value < 60:
+            self.avg_hr.setStyleSheet("color: #fab387; font-size: 18px; font-weight: bold;")
+        elif avg_hr_value > 100:
+            self.avg_hr.setStyleSheet("color: #f38ba8; font-size: 18px; font-weight: bold;")
+        else:
+            self.avg_hr.setStyleSheet("color: #a6e3a1; font-size: 18px; font-weight: bold;")
