@@ -1,8 +1,8 @@
 """
-Audio Management for rPPG Heart Rate Monitoring Application
+Pengelolaan Audio untuk Aplikasi Pemantauan Detak Jantung rPPG
 
-This module handles audio playback for the application, including alarm sounds
-for heart rate threshold alerts and notification sounds for other events.
+Modul ini menangani pemutaran audio untuk aplikasi, termasuk suara alarm
+untuk peringatan ambang batas detak jantung dan suara notifikasi untuk kejadian lainnya.
 """
 
 import os
@@ -12,239 +12,207 @@ from PyQt6 import QtMultimedia, QtCore, QtWidgets
 
 class AudioManager:
     """
-    Manages audio playback for the application with support for multiple sounds.
+    Mengelola pemutaran audio untuk aplikasi dengan dukungan untuk beberapa suara.
     
-    This class handles loading, playing, and controlling various audio files
-    including alarm sounds and notification sounds.
+    Kelas ini menangani pemuatan, pemutaran, dan kontrol berbagai file audio
+    termasuk suara alarm dan suara notifikasi.
     """
     
     def __init__(self, window, volume=0.75):
         """
-        Initialize the audio manager.
+        Menginisialisasi manajer audio.
         
         Args:
-            window: Main application window for UI updates
-            volume (float, optional): Default volume (0.0 to 1.0). Defaults to 0.75.
+            window: Jendela aplikasi utama untuk pembaruan UI.
+            volume (float, optional): Volume default (0.0 hingga 1.0). Defaultnya 0.75.
         """
         self.window = window
         self.sounds = {}
-        self.active_sounds = set()
+        self.active_sounds = set() # Untuk melacak suara yang sedang diputar
         self.is_muted = False
-        self.default_volume = max(0.0, min(1.0, volume))  # Ensure volume is in valid range
+        self.default_volume = max(0.0, min(1.0, volume))  # Memastikan volume dalam rentang yang valid
         
-        # Load standard sounds
+        # Memuat suara standar
         self._load_sounds()
     
     def _load_sounds(self):
-        """Load all required sound files into memory."""
+        """Memuat semua file suara yang diperlukan ke dalam memori."""
         try:
-            # Define the sounds we need - only using alarm sound
+            # Mendefinisikan suara yang kita butuhkan - hanya menggunakan suara alarm
             sound_files = {
                 'alarm': 'alarm.wav',
-                # Removed unused sound files
             }
             
-            # Find the assets directory
+            # Menemukan direktori aset
             assets_dir = self._find_assets_directory()
             
-            # Load each sound file
+            # Memuat setiap file suara
             for sound_id, filename in sound_files.items():
                 sound_path = os.path.join(assets_dir, filename)
                 if os.path.exists(sound_path):
                     sound = QtMultimedia.QSoundEffect()
                     sound.setSource(QtCore.QUrl.fromLocalFile(sound_path))
                     sound.setVolume(self.default_volume)
-                    sound.setLoopCount(1)  # Default to single play
+                    # Tidak ada jumlah loop default di sini; akan diatur saat memutar
                     self.sounds[sound_id] = sound
                     print(f"Loaded sound: {sound_id} from {sound_path}")
                 else:
-                    print(f"Warning: Sound file not found: {sound_path}")
+                    print(f"Warning: Sound file '{filename}' not found at {sound_path}")
         
         except Exception as e:
             print(f"Error loading sounds: {e}")
     
     def _find_assets_directory(self):
         """
-        Find the assets directory containing sound files.
+        Menemukan direktori aset yang berisi file suara.
+        Fungsi ini memprioritaskan penemuan 'assets' relatif terhadap akar paket 'rppg' utama.
         
         Returns:
-            str: Path to the assets directory
-            
+            str: Jalur ke direktori aset
+        
         Raises:
-            FileNotFoundError: If assets directory cannot be found
+            FileNotFoundError: Jika direktori aset tidak dapat ditemukan dan tidak dibuat.
         """
-        # Try different possible locations for the assets directory
-        possible_paths = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets"),
-            os.path.join(os.getcwd(), "assets")
+        current_script_dir = os.path.dirname(os.path.abspath(__file__)) # Contoh: .../RPPG/rppg/core/
+        rppg_package_root = os.path.dirname(current_script_dir)         # Contoh: .../RPPG/rppg/
+
+        # 1. Lokasi paling umum untuk aset dalam paket Python: rppg/assets/
+        expected_assets_path_1 = os.path.join(rppg_package_root, "assets") # Contoh: .../RPPG/rppg/assets/
+
+        # 2. Kurang umum, tetapi mungkin: RPPG/assets/ (saudara dari folder paket rppg)
+        # Jalur ini mungkin digunakan jika aset ditempatkan di tingkat teratas proyek.
+        project_root = os.path.dirname(rppg_package_root)               # Contoh: .../RPPG/
+        expected_assets_path_2 = os.path.join(project_root, "assets")    # Contoh: .../RPPG/assets/
+        
+        # 3. Direktori kerja saat ini tempat skrip mungkin dijalankan
+        # Ini dapat bervariasi tergantung pada bagaimana skrip dijalankan (misalnya, dari IDE, terminal)
+        current_working_dir_assets = os.path.join(os.getcwd(), "assets")
+        
+        possible_paths_to_check = [
+            expected_assets_path_1,
+            expected_assets_path_2,
+            current_working_dir_assets
         ]
-        
-        # Check if running as a packaged application (e.g., PyInstaller)
+
+        print(f"\n--- Debugging Jalur Aset ---")
+        print(f"Direktori Skrip Saat Ini (lokasi sound.py): {current_script_dir}")
+        print(f"Akar Paket RPPG (folder rppg/): {rppg_package_root}")
+        print(f"Akar Proyek (folder RPPG/ tingkat atas): {project_root}")
+        print(f"Direktori Kerja Saat Ini: {os.getcwd()}")
+        print(f"Kemungkinan Jalur Aset untuk Diperiksa:")
+        for i, path in enumerate(possible_paths_to_check):
+            print(f"   {i+1}. {path} (Ada sebagai dir: {os.path.exists(path) and os.path.isdir(path)})")
+
+        # Memeriksa apakah berjalan sebagai aplikasi yang dikemas (misalnya, PyInstaller)
         if getattr(sys, 'frozen', False):
-            possible_paths.append(os.path.join(sys._MEIPASS, "assets"))
-        
-        # Find the first valid path
-        for path in possible_paths:
+            # PyInstaller sering menempatkan aset di sys._MEIPASS
+            frozen_assets_path = os.path.join(sys._MEIPASS, "assets")
+            if os.path.exists(frozen_assets_path) and os.path.isdir(frozen_assets_path):
+                print(f"Ditemukan direktori aset (beku): {frozen_assets_path}")
+                print(f"--- Akhir Debugging Jalur Aset ---\n")
+                return frozen_assets_path
+
+        # Iterasi melalui kemungkinan jalur dan kembalikan yang pertama yang ada
+        for path in possible_paths_to_check:
             if os.path.exists(path) and os.path.isdir(path):
+                print(f"Mengembalikan direktori aset yang valid: {path}")
+                print(f"--- Akhir Debugging Jalur Aset ---\n")
                 return path
-        
-        # If not found, use the first path and create the directory if needed
-        os.makedirs(possible_paths[0], exist_ok=True)
-        return possible_paths[0]
-    
-    def play(self, sound_id, loop=False, volume=None):
+
+        # Jika tidak ada direktori aset yang ada ditemukan, cetak peringatan dan coba buat
+        # satu di lokasi yang paling umum diharapkan (rppg/assets)
+        default_creation_path = expected_assets_path_1 # Gunakan jalur relatif terhadap akar paket rppg
+        print(f"Peringatan: Direktori aset tidak ditemukan di lokasi yang diharapkan.")
+        print(f"Mencoba membuat direktori aset default di: {default_creation_path}")
+        os.makedirs(default_creation_path, exist_ok=True)
+        print(f"--- Akhir Debugging Jalur Aset ---\n")
+        return default_creation_path
+
+    def play_sound(self, sound_id, loop=False):
         """
-        Play a specific sound.
-        
+        Memutar suara.
+
         Args:
-            sound_id (str): Identifier for the sound to play
-            loop (bool, optional): Whether to loop the sound. Defaults to False.
-            volume (float, optional): Volume override (0.0 to 1.0). If None, uses default.
-                
-        Returns:
-            bool: True if sound started playing, False otherwise
+            sound_id (str): ID suara yang akan diputar (misalnya, 'alarm').
+            loop (bool, optional): True untuk mengulang suara tanpa batas. Defaultnya False.
         """
         if self.is_muted:
-            return False
+            print(f"Mencoba memutar '{sound_id}' tetapi audio di-mute.")
+            return
+
+        sound = self.sounds.get(sound_id)
+        if sound:
+            if sound.isPlaying():
+                sound.stop()  # Hentikan jika sudah diputar untuk memulai ulang
             
-        if sound_id not in self.sounds:
-            print(f"Warning: Sound '{sound_id}' not found")
-            return False
-        
-        sound = self.sounds[sound_id]
-        
-        # Set custom volume if provided
-        if volume is not None:
-            sound.setVolume(max(0.0, min(1.0, volume)))
-        
-        # Set loop count
-        if loop:
-            sound.setLoopCount(QtMultimedia.QSoundEffect.Infinite)
+            if loop:
+               sound.setLoopCount(-2)
+            else:
+                sound.setLoopCount(1)
+
+            sound.play()
+            self.active_sounds.add(sound_id)
+            print(f"Memutar suara: {sound_id} (loop: {loop})")
         else:
-            sound.setLoopCount(1)
-        
-        # Play the sound
-        sound.play()
-        self.active_sounds.add(sound_id)
-        
-        return True
-    
-    def stop(self, sound_id=None):
+            print(f"Peringatan: Suara '{sound_id}' tidak ditemukan dalam suara yang dimuat.")
+
+    def stop_sound(self, sound_id):
         """
-        Stop a specific sound or all sounds.
-        
+        Menghentikan suara tertentu.
+
         Args:
-            sound_id (str, optional): Identifier for the sound to stop.
-                                     If None, stops all sounds.
+            sound_id (str): ID suara yang akan dihentikan.
         """
-        if sound_id is None:
-            # Stop all active sounds
-            for active_id in list(self.active_sounds):
-                if active_id in self.sounds:
-                    self.sounds[active_id].stop()
-            self.active_sounds.clear()
-        elif sound_id in self.sounds:
-            # Stop specific sound
-            self.sounds[sound_id].stop()
-            self.active_sounds.discard(sound_id)
-    
+        sound = self.sounds.get(sound_id)
+        if sound and sound.isPlaying():
+            sound.stop()
+            if sound_id in self.active_sounds:
+                self.active_sounds.remove(sound_id)
+            print(f"Menghentikan suara: {sound_id}")
+        elif sound:
+            print(f"Suara '{sound_id}' tidak sedang diputar.")
+        else:
+            print(f"Peringatan: Mencoba menghentikan ID suara yang tidak dikenal: {sound_id}")
+
+    def stop_all_sounds(self):
+        """Menghentikan semua suara yang sedang diputar."""
+        # Buat daftar dari set untuk menghindari kesalahan "Set changed size during iteration"
+        for sound_id in list(self.active_sounds): 
+            self.stop_sound(sound_id)
+        print("Menghentikan semua suara.")
+
+    def set_master_volume(self, volume):
+        """
+        Mengatur volume master untuk semua suara.
+
+        Args:
+            volume (float): Tingkat volume (0.0 hingga 1.0).
+        """
+        self.default_volume = max(0.0, min(1.0, volume)) # Memastikan rentang yang valid
+        for sound in self.sounds.values():
+            sound.setVolume(self.default_volume)
+        print(f"Volume master diatur ke: {self.default_volume}")
+
     def toggle_mute(self):
-        """
-        Toggle the mute state of all sounds.
-        
-        Returns:
-            bool: New mute state (True = muted, False = unmuted)
-        """
+        """Mengaktifkan atau menonaktifkan status mute untuk semua suara."""
         self.is_muted = not self.is_muted
-        
-        # Update UI mute button if it exists
-        if hasattr(self.window, 'mute_button'):
-            sound_icon = QtWidgets.QApplication.style().standardIcon(
-                QtWidgets.QStyle.StandardPixmap.SP_MediaVolumeMuted if self.is_muted else
-                QtWidgets.QStyle.StandardPixmap.SP_MediaVolume
-            )
-            self.window.mute_button.setIcon(sound_icon)
-            self.window.mute_button.setToolTip(f"Toggle sound (currently {'OFF' if self.is_muted else 'ON'})")
-        
-        # Stop all sounds if muted
         if self.is_muted:
-            self.stop()
-        
-        # Update status label if it exists
-        if hasattr(self.window, 'status_label'):
-            self._update_status_label()
-            
-        return self.is_muted
-    
-    def _update_status_label(self):
-        """Update the status label based on mute state."""
-        status_text = self.window.status_label.text()
-        if "Muted" in status_text:
-            self.window.status_label.setText(status_text.replace(" (Sound Muted)", ""))
-        elif self.is_muted:
-            self.window.status_label.setText(f"{status_text} (Sound Muted)")
-    
-    def set_volume(self, volume, sound_id=None):
+            self.stop_all_sounds() # Hentikan semua suara saat di-mute
+            print("Audio di-mute.")
+        else:
+            print("Audio tidak di-mute.")
+        # Anda mungkin ingin memancarkan sinyal di sini
+        # jika ada UI yang perlu diperbarui berdasarkan status mute.
+
+    def is_playing(self, sound_id):
         """
-        Set volume for a specific sound or all sounds.
-        
+        Memeriksa apakah suara tertentu sedang diputar.
+
         Args:
-            volume (float): Volume level from 0.0 to 1.0
-            sound_id (str, optional): Specific sound to adjust.
-                                     If None, sets volume for all sounds.
+            sound_id (str): ID suara yang akan diperiksa.
+
+        Returns:
+            bool: True jika suara sedang diputar, False jika sebaliknya.
         """
-        volume = max(0.0, min(1.0, volume))  # Ensure volume is in valid range
-        
-        if sound_id is None:
-            # Set volume for all sounds
-            for sound in self.sounds.values():
-                sound.setVolume(volume)
-            self.default_volume = volume
-        elif sound_id in self.sounds:
-            # Set volume for specific sound
-            self.sounds[sound_id].setVolume(volume)
-
-
-# Backward compatibility with existing API
-class AlarmSound:
-    """Legacy class for backward compatibility."""
-    def __init__(self, window):
-        self.window = window
-        self.audio_manager = AudioManager(window)
-        self.alarm_playing = False
-        self.is_muted = False
-        
-    def play(self):
-        """Play the alarm sound if it's not muted."""
-        if not self.is_muted:
-            success = self.audio_manager.play('alarm', loop=True)
-            if success:
-                self.alarm_playing = True
-                print("Alarm sound started.")
-                
-    def stop(self):
-        """Stop the alarm sound."""
-        self.audio_manager.stop('alarm')
-        self.alarm_playing = False
-        print("Alarm sound stopped.")
-        
-    def toggle(self):
-        """Toggle the mute state of the alarm sound."""
-        self.is_muted = self.audio_manager.toggle_mute()
-        
-        # Stop alarm if muted
-        if self.is_muted and self.alarm_playing:
-            self.stop()
-
-
-def setup_alarm_sound(window):
-    """Setup alarm sound for heart rate alerts."""
-    alarm = AlarmSound(window)
-    window.alarm_sound = alarm
-    return alarm
-
-
-def toggle_alarm_sound(window):
-    """Toggle alarm sound on/off."""
-    window.alarm_sound.toggle() 
+        sound = self.sounds.get(sound_id)
+        return sound and sound.isPlaying()

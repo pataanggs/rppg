@@ -6,7 +6,7 @@ import numpy as np
 from scipy import signal as sg
 from PyQt6.QtCore import pyqtSignal, QObject
 
-from signal_processor import SignalProcessor
+from signal.signal_processor import SignalProcessor
 
 
 class VideoThread(threading.Thread):
@@ -78,7 +78,7 @@ class VideoThread(threading.Thread):
         # Performance optimization variables
         self.frame_count = 0
         self.last_hr_update_time = 0
-        self.hr_update_interval = 0.3  # Update HR less frequently (0.3s instead of 0.2s)
+        self.hr_update_interval = 1  # Update HR less frequently (0.3s instead of 0.2s)
         
         # Start with higher frame skipping by default - process fewer frames for better performance
         self.frame_skip = 2  # Start with processing every other frame

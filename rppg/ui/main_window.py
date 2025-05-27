@@ -1,12 +1,13 @@
 import time
 from PyQt6 import QtWidgets, QtCore, QtGui
 import cv2
-from threads.video_thread import VideoThread
-from sound import setup_alarm_sound, toggle_alarm_sound
-from ui.components import HeartRateDisplay, HeartRateGraph, ProgressCircleWidget
+from rppg.threads.video_thread import VideoThread
+# Mengimpor AudioManager dari core.sound
+from core.sound import AudioManager 
+from rppg.ui.components import HeartRateDisplay, HeartRateGraph, ProgressCircleWidget
 import numpy as np
-from ui.settings_dialog import SettingsDialog
-from ui.styles import Colors, Fonts, StyleSheets, Layout, apply_stylesheet, get_heart_rate_color
+from rppg.ui.settings_dialog import SettingsDialog
+from rppg.ui.styles import Colors, Fonts, StyleSheets, Layout, apply_stylesheet, get_heart_rate_color
 import csv
 import os
 from datetime import datetime
@@ -19,10 +20,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hr_data = []
         self.hr_timestamps = []
         self.max_data_points = 300  # Store last 5 minutes at 1Hz
-        self.initUI()
+        
+        # PENTING: Inisialisasi AudioManager SEBELUM initUI() dipanggil
+        # Melewatkan 'self' (instance MainWindow) ke AudioManager
+        self.audio_manager = AudioManager(self) 
+        self.is_muted = self.audio_manager.is_muted # Sinkronkan status mute awal
+
+        self.initUI() # initUI sekarang dipanggil setelah audio_manager diinisialisasi
         self.setup_video()
-        self.is_muted = False
-        setup_alarm_sound(self)
+        
 
     def initUI(self):
         self.setWindowTitle("rPPG Heart Rate Monitor")
@@ -519,12 +525,20 @@ class MainWindow(QtWidgets.QMainWindow):
             if hr < 60:
                 status_text = f"Low heart rate detected: {hr:.1f} BPM"
                 self.status_label.setStyleSheet("color: #fab387; font-weight: bold;")
+                # Memutar suara alarm jika detak jantung rendah dan tidak di-mute
+                if not self.audio_manager.is_muted and not self.audio_manager.is_playing('alarm'):
+                    self.audio_manager.play_sound('alarm', loop=True)
             elif hr > 100:
                 status_text = f"High heart rate detected: {hr:.1f} BPM"
                 self.status_label.setStyleSheet("color: #f38ba8; font-weight: bold;")
+                # Memutar suara alarm jika detak jantung tinggi dan tidak di-mute
+                if not self.audio_manager.is_muted and not self.audio_manager.is_playing('alarm'):
+                    self.audio_manager.play_sound('alarm', loop=True)
             else:
                 status_text = f"Normal heart rate: {hr:.1f} BPM"
                 self.status_label.setStyleSheet("color: #a6e3a1; font-weight: bold;")
+                # Menghentikan suara alarm jika detak jantung normal
+                self.audio_manager.stop_sound('alarm')
                 
             self.status_label.setText(status_text)
             
@@ -549,6 +563,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.status_label.setText("Calculating heart rate...")
             self.status_label.setStyleSheet("color: #cdd6f4;")
+            # Menghentikan suara alarm jika tidak ada detak jantung yang valid
+            self.audio_manager.stop_sound('alarm')
     
     def convert_cv_to_qt(self, cv_img):
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
@@ -562,6 +578,8 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def closeEvent(self, event):
         self.video_thread.stop()
+        # Menghentikan semua suara saat aplikasi ditutup
+        self.audio_manager.stop_all_sounds() 
         # Prompt to save data if recording
         if hasattr(self, 'is_recording') and self.is_recording and hasattr(self, 'recorded_data') and len(self.recorded_data) > 0:
             reply = QtWidgets.QMessageBox.question(
@@ -598,7 +616,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addToolBar(toolbar)
         
         # Add toolbar title
-        title_label = QtWidgets.QLabel("  rPPG Monitor")
+        title_label = QtWidgets.QLabel("   rPPG Monitor")
         title_label.setStyleSheet("font-weight: bold; color: #f5c2e7; font-size: 15px;")
         toolbar.addWidget(title_label)
         
@@ -610,9 +628,11 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Mute button with custom icon
         self.mute_button = QtWidgets.QToolButton()
-        self.mute_button.setIcon(self._create_icon_from_name("audio-volume-high"))
+        # Perbarui ikon mute berdasarkan status awal AudioManager
+        self._update_mute_button_icon()
         self.mute_button.setToolTip("Toggle alarm sound (currently ON)")
-        self.mute_button.clicked.connect(lambda: toggle_alarm_sound(self))
+        # Menghubungkan tombol mute ke metode toggle_mute AudioManager
+        self.mute_button.clicked.connect(self.toggle_mute_sound) 
         toolbar.addWidget(self.mute_button)
         
         # Settings button with custom icon
@@ -628,6 +648,24 @@ class MainWindow(QtWidgets.QMainWindow):
         clear_button.setToolTip("Clear Graph Data")
         clear_button.clicked.connect(self.clear_graph_data)
         toolbar.addWidget(clear_button)
+
+    def toggle_mute_sound(self):
+        """Mengaktifkan/menonaktifkan suara alarm dan memperbarui ikon."""
+        self.audio_manager.toggle_mute()
+        self._update_mute_button_icon()
+        if self.audio_manager.is_muted:
+            self.statusBar().showMessage("Alarm sound muted.")
+        else:
+            self.statusBar().showMessage("Alarm sound unmuted.")
+
+    def _update_mute_button_icon(self):
+        """Memperbarui ikon tombol mute berdasarkan status mute AudioManager."""
+        if self.audio_manager.is_muted:
+            self.mute_button.setIcon(self._create_icon_from_name("audio-volume-muted"))
+            self.mute_button.setToolTip("Toggle alarm sound (currently OFF)")
+        else:
+            self.mute_button.setIcon(self._create_icon_from_name("audio-volume-high"))
+            self.mute_button.setToolTip("Toggle alarm sound (currently ON)")
 
     def toggle_recording(self):
         """Toggle recording of heart rate data."""
@@ -951,6 +989,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # If icon not found, use fallback
         if icon.isNull():
+            # Anda bisa membuat ikon fallback yang lebih umum di sini jika SP_CustomBase tidak cukup
+            # Contoh: return QtGui.QIcon(self._create_icon_pixmap("default", color="#a6adc8"))
             return QtGui.QIcon(self._create_icon_pixmap("default"))
         
         return icon

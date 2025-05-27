@@ -1,6 +1,6 @@
 # ui/settings_dialog.py - create this new file
 from PyQt6 import QtWidgets, QtCore, QtGui
-from ui.styles import apply_stylesheet, StyleSheets, Colors
+from rppg.ui.styles import apply_stylesheet, StyleSheets, Colors
 
 class SettingsDialog(QtWidgets.QDialog):
     """Dialog for configuring application settings."""
