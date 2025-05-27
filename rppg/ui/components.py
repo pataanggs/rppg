@@ -1,7 +1,7 @@
 from PyQt6 import QtWidgets, QtCore, QtGui
 import time
 import numpy as np
-from ui.styles import Colors, StyleSheets, apply_stylesheet
+from rppg.ui.styles import Colors, StyleSheets, apply_stylesheet
 import matplotlib
 matplotlib.use('qt5agg')  # Use qt5agg which is supported
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
