@@ -1,4 +1,5 @@
 # rppg/ui/settings_dialog.py
+from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QFormLayout, QSpinBox, QCheckBox, QComboBox
 
 class SettingsDialog(QDialog):
