@@ -160,8 +160,8 @@ class MainWindow(QtWidgets.QMainWindow):
         right_panel_layout.addWidget(status_container_main); right_panel_layout.addWidget(button_container); right_panel_layout.addWidget(stats_container)
         right_panel_layout.addStretch(1)
         
-        top_section_layout.addWidget(left_panel_widget, 7) # Video panel lebih dominan
-        top_section_layout.addWidget(right_panel_container, 3)
+        top_section_layout.addWidget(left_panel_widget, 1) # Video panel lebih dominan
+        top_section_layout.addWidget(right_panel_container, 1)
 
         graph_container = QtWidgets.QWidget(); graph_container.setObjectName("graphContainer"); graph_container.setStyleSheet("#graphContainer { background-color: #181825; border-radius: 12px; border: 1px solid #313244; }")
         graph_container.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding); graph_container.setMinimumHeight(220) # Pastikan tinggi minimal grafik
@@ -437,36 +437,50 @@ class MainWindow(QtWidgets.QMainWindow):
     def update_signal_quality(self, quality): # Fungsi lama yang dipanggil slot baru
         self.signal_quality_widget.setValue(int(quality))
     
-    def update_time_range(self, index):
-        time_range_seconds = self.time_range_combo.currentData()
-        self.max_data_points = time_range_seconds # Asumsi 1 data point per detik
+    def update_time_range(self, index): # index adalah parameter dari sinyal currentIndexChanged
+        """Dipanggil saat pengguna mengubah pilihan rentang waktu di QComboBox."""
+        if not hasattr(self, 'time_range_combo') or not hasattr(self, 'hr_graph'):
+            print("Peringatan: Atribut 'time_range_combo' atau 'hr_graph' belum ada saat update_time_range dipanggil.")
+            return
+
+        # Dapatkan durasi waktu dalam detik dari data QComboBox
+        time_range_seconds = self.time_range_combo.currentData() 
         
-        # Trim data yang lebih tua dari rentang waktu yang dipilih
-        current_time = time.time()
-        cutoff_time = current_time - time_range_seconds
+        if time_range_seconds is None: 
+            # Fallback jika currentData() None (seharusnya tidak terjadi jika QComboBox di-setup dengan benar)
+            print("Peringatan: time_range_combo.currentData() mengembalikan None. Mencoba fallback dari teks.")
+            try:
+                text = self.time_range_combo.currentText()
+                if "1 Menit" in text: time_range_seconds = 60
+                elif "3 Menit" in text: time_range_seconds = 180
+                elif "5 Menit" in text: time_range_seconds = 300
+                else: 
+                    time_range_seconds = 180 # Default jika teks tidak dikenali
+                    print(f"Peringatan: Teks QComboBox '{text}' tidak dikenali, menggunakan default {time_range_seconds} detik.")
+            except Exception as e:
+                time_range_seconds = 180 # Default jika ada error lain
+                print(f"Error saat fallback rentang waktu: {e}. Menggunakan default {time_range_seconds} detik.")
         
-        new_hr_data = []
-        new_hr_timestamps = []
-        for i in range(len(self.hr_timestamps)):
-            if self.hr_timestamps[i] >= cutoff_time:
-                new_hr_data.append(self.hr_data[i])
-                new_hr_timestamps.append(self.hr_timestamps[i])
-        
-        self.hr_data = new_hr_data
-        self.hr_timestamps = new_hr_timestamps
-        
-        # Update graph hanya jika ada data setelah trimming
-        if len(self.hr_data) > 1:
+        print(f"[MainWindow] Rentang waktu grafik diubah pengguna menjadi: {time_range_seconds} detik.")
+
+        if hasattr(self.hr_graph, 'update_graph_settings'):
+            self.hr_graph.update_graph_settings(max_time_seconds=time_range_seconds)
+        else:
+            print("Peringatan: HeartRateGraph tidak punya metode 'update_graph_settings'. Grafik mungkin tidak terupdate dengan benar.")
+            # Jika tidak ada update_graph_settings, setidaknya kita clear grafik lama
+            self.hr_graph.clear_graph()
+
+        current_main_hr_data = list(self.hr_data)
+        current_main_hr_timestamps = list(self.hr_timestamps)
+
+        if current_main_hr_data and current_main_hr_timestamps: 
+            print(f"[MainWindow] Mengirim ulang {len(current_main_hr_data)} poin data ke grafik dengan rentang baru.")
             if hasattr(self.hr_graph, 'update_graph_batch'):
-                self.hr_graph.update_graph_batch(self.hr_data, self.hr_timestamps)
-            else: # Fallback jika HeartRateGraph diubah
-                # Perlu logika untuk re-plot semua data buffer di graph
-                # Untuk MplCanvas, mungkin panggil clear lalu update_plot dengan buffer penuh
-                self.hr_graph.clear_graph()
-                if len(self.hr_data) > 1:
-                    self.hr_graph.canvas.update_plot(np.array(self.hr_timestamps), np.array(self.hr_data))
-        elif len(self.hr_data) <= 1 : # Jika data sedikit atau kosong, clear graph
-             self.hr_graph.clear_graph()
+                self.hr_graph.update_graph_batch(current_main_hr_data, current_main_hr_timestamps)
+            else:
+                print("Peringatan: HeartRateGraph tidak punya metode 'update_graph_batch'. Data historis mungkin tidak tergambar ulang.")
+        
+        self.statusBar().showMessage(f"Rentang waktu grafik diatur ke {self.time_range_combo.currentText()}")
 
 
     def _create_heart_pixmap(self, size, color_hex="#E91E63"):

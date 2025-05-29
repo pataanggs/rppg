@@ -42,24 +42,35 @@ class MplCanvas(FigureCanvas):
 
     def _configure_plots(self):
         # Konfigurasi ax1 (Heart Rate)
-        self.ax1.set_title('Sinyal Detak Jantung', color=self.text_color, fontsize=10)
+        self.ax1.set_title('Riwayat Detak Jantung', color=self.text_color, fontsize=10) # Judul bisa ini atau "Sinyal Detak Jantung"
         self.ax1.set_xlabel('Waktu Relatif (detik)', color=self.text_color, fontsize=9)
-        self.ax1.set_ylabel('Amplitudo', color=self.text_color, fontsize=9)
+        
+        self.ax1.set_ylabel('Detak Jantung (BPM)', color=self.text_color, fontsize=9) 
+        self.ax1.set_ylim(40, 160)  
+        
         self.ax1.tick_params(axis='both', which='major', labelsize=8, colors=self.text_color)
         self.ax1.grid(True, linestyle='--', alpha=0.7, color=self.grid_color)
         self.ax1.spines['top'].set_visible(False); self.ax1.spines['right'].set_visible(False)
         self.ax1.spines['bottom'].set_color(self.grid_color); self.ax1.spines['left'].set_color(self.grid_color)
         self.ax1.legend(loc='upper right', fontsize=8, frameon=False)
 
-        # Konfigurasi ax2 (Respiration)
-        self.ax2.set_title('Sinyal Respirasi', color=self.text_color, fontsize=10)
+        # Konfigurasi ax2 (Respiration) - Biarkan seperti sebelumnya jika belum dipakai aktif
+        self.ax2.set_title('Sinyal Respirasi (Contoh)', color=self.text_color, fontsize=10)
         self.ax2.set_xlabel('Waktu Relatif (detik)', color=self.text_color, fontsize=9)
-        self.ax2.set_ylabel('Amplitudo', color=self.text_color, fontsize=9)
+        self.ax2.set_ylabel('Amplitudo', color=self.text_color, fontsize=9) # Sumbu Y ax2 bisa tetap Amplitudo
+        # self.ax2.set_ylim(Y_MIN_RESP, Y_MAX_RESP) # Jika perlu, atur juga Y-lim untuk respirasi
         self.ax2.tick_params(axis='both', which='major', labelsize=8, colors=self.text_color)
         self.ax2.grid(True, linestyle='--', alpha=0.7, color=self.grid_color)
         self.ax2.spines['top'].set_visible(False); self.ax2.spines['right'].set_visible(False)
         self.ax2.spines['bottom'].set_color(self.grid_color); self.ax2.spines['left'].set_color(self.grid_color)
         self.ax2.legend(loc='upper right', fontsize=8, frameon=False)
+        # self.ax2.set_visible(False) # Kamu bisa set ax2 tidak terlihat di awal jika belum ada data
+
+        try:
+            self.fig.tight_layout(pad=2.0) # Panggil setelah semua konfigurasi subplot
+        except Exception:
+            pass # Kadang tight_layout bisa error jika figure belum siap sepenuhnya
+    
     
     def update_plot(self, time_data, hr_data, resp_data=None, hr_peaks=None):
         if not isinstance(time_data, np.ndarray): time_data = np.array(time_data)
@@ -103,7 +114,7 @@ class MplCanvas(FigureCanvas):
             self.line_hr_peaks.set_visible(False)
         
         self.ax1.relim()
-        self.ax1.autoscale_view()
+        self.ax1.autoscale_view(scalex=True, scaley=False)
 
         # --- Update Respiration Plot (ax2) ---
         if resp_data is not None and len(resp_data) == len(time_plot):
