@@ -79,19 +79,19 @@ class SignalProcessor:
             # atau outlier removal tidak signifikan mengubah panjang.
             # Jika berbeda, ini bisa jadi sumber error:
             if len(uniform_time_vector) != len(detrended_signal):
-                 # Jika panjang berbeda, kita harus melakukan interpolasi pada timestamps asli ke panjang detrended_signal
-                 # atau sebaliknya. Ini bisa rumit jika outlier removal signifikan.
-                 # Untuk sekarang, kita resize detrended_signal agar cocok dengan uniform_time_vector jika panjangnya beda sedikit
-                 if abs(len(uniform_time_vector) - len(detrended_signal)) < 5 and len(uniform_time_vector)>0: # Toleransi perbedaan kecil
-                     # print(f"Warning: Resampling detrended signal from {len(detrended_signal)} to {len(uniform_time_vector)}")
-                     resampled_detrended = np.interp(uniform_time_vector, 
-                                                     np.linspace(timestamps[0], timestamps[-1], len(detrended_signal)), 
-                                                     detrended_signal)
-                     detrended_signal = resampled_detrended
-                 else:
-                     # print(f"SignalProcessor: Perbedaan panjang signifikan setelah detrend/outlier removal. {len(uniform_time_vector)} vs {len(detrended_signal)}")
-                     self.signal_quality = 10.0 # Kualitas rendah
-                     # return None, 0.0, self.signal_quality # Atau coba lanjutkan dengan risiko
+                # Jika panjang berbeda, kita harus melakukan interpolasi pada timestamps asli ke panjang detrended_signal
+                # atau sebaliknya. Ini bisa rumit jika outlier removal signifikan.
+                # Untuk sekarang, kita resize detrended_signal agar cocok dengan uniform_time_vector jika panjangnya beda sedikit
+                if abs(len(uniform_time_vector) - len(detrended_signal)) < 5 and len(uniform_time_vector)>0: # Toleransi perbedaan kecil
+                    # print(f"Warning: Resampling detrended signal from {len(detrended_signal)} to {len(uniform_time_vector)}")
+                    resampled_detrended = np.interp(uniform_time_vector, 
+                                                    np.linspace(timestamps[0], timestamps[-1], len(detrended_signal)), 
+                                                    detrended_signal)
+                    detrended_signal = resampled_detrended
+                else:
+                    # print(f"SignalProcessor: Perbedaan panjang signifikan setelah detrend/outlier removal. {len(uniform_time_vector)} vs {len(detrended_signal)}")
+                    self.signal_quality = 10.0 # Kualitas rendah
+                    # return None, 0.0, self.signal_quality # Atau coba lanjutkan dengan risiko
 
             # 5. Bandpass Filter (misal 0.7 Hz - 4 Hz, atau 42-240 BPM)
             lowcut_hz = 0.7

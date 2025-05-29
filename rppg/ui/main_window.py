@@ -176,7 +176,7 @@ class MainWindow(QtWidgets.QMainWindow):
         graph_header.addWidget(time_range_label); graph_header.addWidget(self.time_range_combo)
         
         self.hr_graph = HeartRateGraph(dark_mode=True)
-        self.hr_graph.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding); self.hr_graph.setMinimumHeight(150)
+        self.hr_graph.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding); self.hr_graph.setMinimumHeight(450)
         
         graph_section_layout.addLayout(graph_header); graph_section_layout.addWidget(self.hr_graph, 1)
         
@@ -276,9 +276,9 @@ class MainWindow(QtWidgets.QMainWindow):
             if len(self.hr_data) > 1: 
                 # Kirim batch data ke graph jika metode update_graph_batch ada di HeartRateGraph
                 if hasattr(self.hr_graph, 'update_graph_batch'):
-                     self.hr_graph.update_graph_batch(self.hr_data, self.hr_timestamps)
+                    self.hr_graph.update_graph_batch(self.hr_data, self.hr_timestamps)
                 else: # Fallback ke update per data point jika HeartRateGraph diubah
-                     self.hr_graph.update_graph(hr, current_time_ts) # Jika hr_graph.update_graph hanya terima 1 data
+                    self.hr_graph.update_graph(hr, current_time_ts) # Jika hr_graph.update_graph hanya terima 1 data
         else:
             self.hr_display.set_heart_rate(0) 
             self.status_label_main.setText("Menghitung HR..."); self.status_label_main.setStyleSheet("color: #cdd6f4; font-size:12px;")
@@ -398,7 +398,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def clear_graph_data(self):
         reply = QMessageBox.question(self, "Hapus Data", "Anda yakin ingin menghapus semua data grafik?", 
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.hr_data = []; self.hr_timestamps = []; self.hr_graph.clear_graph()
             self.statusBar().showMessage("Data grafik dihapus")
@@ -466,7 +466,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if len(self.hr_data) > 1:
                     self.hr_graph.canvas.update_plot(np.array(self.hr_timestamps), np.array(self.hr_data))
         elif len(self.hr_data) <= 1 : # Jika data sedikit atau kosong, clear graph
-             self.hr_graph.clear_graph()
+            self.hr_graph.clear_graph()
 
 
     def _create_heart_pixmap(self, size, color_hex="#E91E63"):
