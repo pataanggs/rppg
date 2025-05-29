@@ -13,7 +13,6 @@ class SignalProcessor:
         self.hr_history = []
         self.max_history = 10  # Jumlah HR terakhir untuk smoothing
         self.signal_quality = 0.0 # Kualitas sinyal dalam persentase (0-100)
-        self.resp_buffer = []  # Add respiratory signal buffer
         print("SignalProcessor (User's Version) Initialized")
     
     def process(self, signal, timestamps):
@@ -29,18 +28,16 @@ class SignalProcessor:
             confidence (float): Confidence of the HR estimation (0.0 to 1.0).
             signal_quality (float): Quality of the signal (0.0 to 100.0).
         """
-        try:
-            print(f"Processing signal length: {len(signal)}")  # Debug print
+        if not isinstance(signal, list) or not isinstance(timestamps, list):
+            print("SignalProcessor: Input 'signal' and 'timestamps' harus berupa list.")
+            return None, 0.0, 0.0
             
-            if not isinstance(signal, list) or not isinstance(timestamps, list):
-                print("SignalProcessor: Input 'signal' and 'timestamps' harus berupa list.")
-                return None, 0.0, 0.0
-                
-            if len(signal) < 60:  # Butuh minimal sekitar 2 detik data @30fps
-                # print("SignalProcessor: Data sinyal tidak cukup.")
-                self.signal_quality = 0.0 # Set kualitas rendah jika data tidak cukup
-                return None, 0.0, self.signal_quality
-                
+        if len(signal) < 60:  # Butuh minimal sekitar 2 detik data @30fps
+            # print("SignalProcessor: Data sinyal tidak cukup.")
+            self.signal_quality = 0.0 # Set kualitas rendah jika data tidak cukup
+            return None, 0.0, self.signal_quality
+            
+        try:
             # Hitung frekuensi sampling (fs)
             if timestamps[-1] - timestamps[0] <= 0:
                 print("SignalProcessor: Durasi timestamps tidak valid.")
@@ -82,19 +79,19 @@ class SignalProcessor:
             # atau outlier removal tidak signifikan mengubah panjang.
             # Jika berbeda, ini bisa jadi sumber error:
             if len(uniform_time_vector) != len(detrended_signal):
-                # Jika panjang berbeda, kita harus melakukan interpolasi pada timestamps asli ke panjang detrended_signal
-                # atau sebaliknya. Ini bisa rumit jika outlier removal signifikan.
-                # Untuk sekarang, kita resize detrended_signal agar cocok dengan uniform_time_vector jika panjangnya beda sedikit
-                if abs(len(uniform_time_vector) - len(detrended_signal)) < 5 and len(uniform_time_vector)>0: # Toleransi perbedaan kecil
-                    # print(f"Warning: Resampling detrended signal from {len(detrended_signal)} to {len(uniform_time_vector)}")
-                    resampled_detrended = np.interp(uniform_time_vector, 
-                                                    np.linspace(timestamps[0], timestamps[-1], len(detrended_signal)), 
-                                                    detrended_signal)
-                    detrended_signal = resampled_detrended
-                else:
-                    # print(f"SignalProcessor: Perbedaan panjang signifikan setelah detrend/outlier removal. {len(uniform_time_vector)} vs {len(detrended_signal)}")
-                    self.signal_quality = 10.0 # Kualitas rendah
-                    # return None, 0.0, self.signal_quality # Atau coba lanjutkan dengan risiko
+                 # Jika panjang berbeda, kita harus melakukan interpolasi pada timestamps asli ke panjang detrended_signal
+                 # atau sebaliknya. Ini bisa rumit jika outlier removal signifikan.
+                 # Untuk sekarang, kita resize detrended_signal agar cocok dengan uniform_time_vector jika panjangnya beda sedikit
+                 if abs(len(uniform_time_vector) - len(detrended_signal)) < 5 and len(uniform_time_vector)>0: # Toleransi perbedaan kecil
+                     # print(f"Warning: Resampling detrended signal from {len(detrended_signal)} to {len(uniform_time_vector)}")
+                     resampled_detrended = np.interp(uniform_time_vector, 
+                                                     np.linspace(timestamps[0], timestamps[-1], len(detrended_signal)), 
+                                                     detrended_signal)
+                     detrended_signal = resampled_detrended
+                 else:
+                     # print(f"SignalProcessor: Perbedaan panjang signifikan setelah detrend/outlier removal. {len(uniform_time_vector)} vs {len(detrended_signal)}")
+                     self.signal_quality = 10.0 # Kualitas rendah
+                     # return None, 0.0, self.signal_quality # Atau coba lanjutkan dengan risiko
 
             # 5. Bandpass Filter (misal 0.7 Hz - 4 Hz, atau 42-240 BPM)
             lowcut_hz = 0.7
@@ -190,35 +187,12 @@ class SignalProcessor:
                 
             # Pastikan signal_quality selalu ada nilainya
             # print(f"HR: {final_hr}, Conf: {confidence:.2f}, Quality: {self.signal_quality:.1f}%")
-            
-            # Extract respiratory signal (0.1 - 0.4 Hz)
-            resp_lowcut = 0.1
-            resp_highcut = 0.4
-            nyq = 0.5 * fs
-            
-            # Create respiratory signal
-            try:
-                b_resp, a_resp = sg.butter(2, [resp_lowcut/nyq, resp_highcut/nyq], btype='bandpass')
-                respiratory_signal = sg.filtfilt(b_resp, a_resp, signal_normalized)
-            except Exception as e:
-                print(f"Respiratory filter error: {e}")
-                respiratory_signal = np.zeros_like(signal_normalized)
-            
-            # Process heart rate
-            hr, confidence, quality = self._process_hr(filtered_signal, fs)
-            
-            print(f"Processed - HR: {hr}, Quality: {quality}")  # Debug print
-            
-            # Ensure we always return a valid numpy array for respiratory signal
-            if respiratory_signal is None:
-                respiratory_signal = np.zeros_like(signal_normalized)
-            
-            return hr, confidence, quality, respiratory_signal
+            return final_hr, confidence, self.signal_quality
             
         except Exception as e:
-            print(f"SignalProcessor Error: {e}")
-            # Return zero array instead of None
-            return None, 0.0, 0.0, np.zeros(len(signal))
+            print(f"SignalProcessor Error: {e} at line {sys.exc_info()[-1].tb_lineno}")
+            self.signal_quality = 0.0
+            return None, 0.0, self.signal_quality # HR, Confidence, Quality
 
     def _remove_outliers(self, signal_data):
         """Versi lain dari remove outlier menggunakan IQR atau kliping sederhana."""
@@ -326,41 +300,3 @@ class SignalProcessor:
             
         self.last_hr = smoothed_hr
         return smoothed_hr
-
-    def _process_hr(self, filtered_signal, fs):
-        """Process heart rate from filtered signal."""
-        try:
-            # Find peaks for heart rate calculation
-            min_peak_dist = fs / (240.0 / 60.0)  # Max HR 240 BPM
-            peaks, properties = sg.find_peaks(
-                filtered_signal,
-                distance=min_peak_dist,
-                height=0.1 * np.std(filtered_signal) if np.std(filtered_signal) > 1e-5 else 0.01,
-                prominence=0.1 * np.std(filtered_signal) if np.std(filtered_signal) > 1e-5 else 0.01
-            )
-
-            # Calculate HR from peak intervals
-            if len(peaks) > 1:
-                intervals = np.diff(peaks) / fs  # Convert to seconds
-                valid_intervals = intervals[(intervals > 60.0/200.0) & (intervals < 60.0/40.0)]
-                
-                if len(valid_intervals) > 0:
-                    mean_interval = np.mean(valid_intervals)
-                    hr = 60.0 / mean_interval
-                    
-                    # Calculate confidence based on interval consistency
-                    interval_std = np.std(valid_intervals)
-                    confidence = 1.0 - min(interval_std / mean_interval, 0.5)
-                    
-                    return hr, confidence, self.signal_quality
-            
-            # If peak detection fails, try FFT method
-            fft_hr = self._fft_heart_rate(filtered_signal, fs)
-            if fft_hr is not None:
-                return fft_hr, 0.5, self.signal_quality  # Lower confidence for FFT method
-                
-            return None, 0.0, self.signal_quality
-            
-        except Exception as e:
-            print(f"Error in _process_hr: {e}")
-            return None, 0.0, 0.0

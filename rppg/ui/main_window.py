@@ -252,15 +252,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self._hr_valid = is_valid
 
         if is_valid:
-            # Update HR display and other UI elements
+            # --- Sinyal respirasi dari bahu sudah 1D (array posisi y bahu) ---
+            resp_data_1d = None
+            if resp_signal is not None and len(resp_signal) > 0:
+                resp_signal = np.array(resp_signal)
+                resp_data_1d = resp_signal.flatten()
+            # ---------------------------------------------------------------
+
             self.hr_display.set_heart_rate(hr)
             hr_color = get_heart_rate_color(hr) 
             self.hr_display.set_color(hr_color)
             
             status_text = ""
-            if hr < 60: status_text = f"Rendah: {hr:.1f} BPM (Conf: {confidence:.2f})"; self.status_label_main.setStyleSheet("color: #fab387; font-weight: bold; font-size:12px;")
-            elif hr > 100: status_text = f"Tinggi: {hr:.1f} BPM (Conf: {confidence:.2f})"; self.status_label_main.setStyleSheet("color: #f38ba8; font-weight: bold; font-size:12px;")
-            else: status_text = f"Normal: {hr:.1f} BPM (Conf: {confidence:.2f})"; self.status_label_main.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size:12px;")
+            if hr < 60:
+                status_text = f"Rendah: {hr:.1f} BPM (Conf: {confidence:.2f})"
+                self.status_label_main.setStyleSheet("color: #fab387; font-weight: bold; font-size:12px;")
+            elif hr > 100:
+                status_text = f"Tinggi: {hr:.1f} BPM (Conf: {confidence:.2f})"
+                self.status_label_main.setStyleSheet("color: #f38ba8; font-weight: bold; font-size:12px;")
+            else:
+                status_text = f"Normal: {hr:.1f} BPM (Conf: {confidence:.2f})"
+                self.status_label_main.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size:12px;")
             self.status_label_main.setText(status_text)
             
             if (hr < 60 or hr > 100) and not self.audio_manager.is_muted and not self.audio_manager.is_playing('alarm'):
@@ -270,11 +282,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if self.is_recording:
                 current_time = time.time()
-                # Store both HR and respiratory data
-                resp_value = resp_signal[-1] if resp_signal is not None and len(resp_signal) > 0 else 0
+                resp_value = resp_data_1d[-1] if resp_data_1d is not None and len(resp_data_1d) > 0 else 0
                 self.recorded_data.append((current_time, hr, resp_value))
             
-            # Update the graph with both HR and respiratory data
             current_time = time.time()
             self.hr_data.append(hr)
             self.hr_timestamps.append(current_time)
@@ -287,11 +297,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.hr_graph.update_plot(
                     np.array(self.hr_timestamps),
                     np.array(self.hr_data),
-                    resp_signal if resp_signal is not None else None
+                    resp_data_1d if resp_data_1d is not None else None
                 )
         else:
             self.hr_display.set_heart_rate(0) 
-            self.status_label_main.setText("Menghitung HR..."); self.status_label_main.setStyleSheet("color: #cdd6f4; font-size:12px;")
+            self.status_label_main.setText("Menghitung HR...")
+            self.status_label_main.setStyleSheet("color: #cdd6f4; font-size:12px;")
             self.audio_manager.stop_sound('alarm')
 
 
