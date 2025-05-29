@@ -64,6 +64,8 @@ RPPG-PROJECT/
 | 1    | May 3, 2024 | - Project initialization<br>- Basic folder structure setup<br>- Initial repository setup                                                                                                                                                                                                                                                  | 20% - Basic project structure and environment setup completed         |
 | 2    | May 5, 2024 | - Implemented face detection using MediaPipe<br>- Added camera selection<br>- Implemented rPPG heart rate estimation<br>- Created UI with heart rate graph<br>- Added alarm with mute functionality<br>- Implemented face detection feedback<br>- Added settings for signal processing and display                                     | 60% - Core functionality implemented including face detection, heart rate monitoring and UI features |
 | 3    | May 17, 2025 | - Extensive code refactoring for better organization<br>- Updated README documentation with detailed sections<br>- Added signal processing module for improved accuracy<br>- Implemented plot canvas for real-time visualization<br>- Created utils module for shared functionality<br>- Added camera selector interface<br>- Improved code structure and maintainability | 80% - Major refactoring completed with enhanced visualization, documentation and code organization |
+| 4    | May 25, 2025 | - Working on report for initiation<br>- Removing redundant files. | 85% - Initiation of the report and also some maintenance. |
+| 5    | May 28-29, 2025 | - Refactoring code<br>- Fixing issue<br>- Optimizing box and sound function<br>- Adding respiration plot<br>- Fixing export function<br>- Added box respiration and bandpass filtering. | 95% - Implemented major enhancements through multiple code refinements and optimizations to improve performance and maintainability. |
 
 ## 💻 Installation
 
@@ -77,3 +79,15 @@ RPPG-PROJECT/
    ```bash
    git clone [https://github.com/yourusername/rppg-heart-rate-monitor.git](https://github.com/yourusername/rppg-heart-rate-monitor.git)
    cd rppg-heart-rate-monitor
+
+2. Install the dependencies by using:
+   ```bash
+   pip install -r requirements.txt
+   
+   However, we recommend you to use a virtual environment like uv. If you are using uv, you can copy this code
+
+   uv pip install -r requirements.txt
+
+3. Run the application:
+    ```bash
+    python run.py
