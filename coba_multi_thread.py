@@ -131,11 +131,13 @@ class CaptureThread(threading.Thread):
         self.frame_queue = frame_queue
         self.running = False
         self.cap = None
+        self.frame_count = 0  # For frame skipping
 
     def _configure_camera(self):
         if not self.cap: return
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)  # Force 30 FPS
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     def run(self):
@@ -150,16 +152,26 @@ class CaptureThread(threading.Thread):
         
         while self.running:
             ret, frame = self.cap.read()
-            timestamp = time.time()
             if not ret:
-                time.sleep(0.1)
+                time.sleep(0.001)  # Small sleep to prevent CPU hogging
                 continue
-            try:
-                self.frame_queue.put((frame, timestamp), block=True, timeout=0.5)
-            except queue.Full:
-                try: self.frame_queue.get_nowait()
-                except queue.Empty: pass
 
+            # Process every other frame
+            self.frame_count += 1
+            if self.frame_count % 2 != 0:
+                continue
+
+            timestamp = time.time()
+            try:
+                # Use non-blocking put and clear queue if full
+                if self.frame_queue.full():
+                    try:
+                        self.frame_queue.get_nowait()
+                    except queue.Empty:
+                        pass
+                self.frame_queue.put_nowait((frame, timestamp))
+            except queue.Full:
+                continue
         print("CaptureThread stopping...")
         if self.cap: self.cap.release()
         print("CaptureThread stopped.")
@@ -191,8 +203,10 @@ class ProcessThread(threading.Thread):
         self.has_face = False
         self.last_face_time = 0
         self.face_lost_threshold = 1.0
-        self.process_width = 320
-        self.process_height = 240
+        self.process_width = 240  # Reduce processing resolution
+        self.process_height = 180
+        self.last_process_time = 0
+        self.min_process_interval = 1.0 / 30  # Limit to 30 FPS
         self.show_face_rect = True
         self.current_hr_for_display = 0.0
 
@@ -248,35 +262,53 @@ class ProcessThread(threading.Thread):
         self.running = True
         while self.running:
             try:
-                frame, timestamp = self.frame_queue.get(block=True, timeout=1.0)
+                frame, timestamp = self.frame_queue.get_nowait()
+                
+                # Limit processing rate
+                current_time = time.time()
+                if current_time - self.last_process_time < self.min_process_interval:
+                    continue
+                self.last_process_time = current_time
+
+                # Optimize frame processing
+                display_frame = cv2.flip(frame.copy(), 1)
+                
+                # Reduce resolution for processing
+                scale = self.process_width / frame.shape[1]
+                process_frame = cv2.resize(frame, 
+                                        (self.process_width, int(frame.shape[0] * scale)),
+                                        interpolation=cv2.INTER_AREA)
+                process_frame = cv2.flip(process_frame, 1)
+                green_avg, face_detected_in_frame = self._process_mp_face(display_frame, process_frame)
+                current_time = time.time()
+                if face_detected_in_frame:
+                    if not self.has_face: self.signals.face_detected.emit(True)
+                    self.has_face = True
+                    self.last_face_time = current_time
+                elif self.has_face and (current_time - self.last_face_time) > self.face_lost_threshold:
+                    if self.has_face: self.signals.face_detected.emit(False)
+                    self.has_face = False
+                    self.smoothed_bbox = None
+                if green_avg is not None:
+                    try: self.signal_queue.put_nowait((green_avg, timestamp))
+                    except queue.Full: pass
+                self._add_info_to_frame(display_frame)
+                
+                # Update display queue with frame dropping
+                try:
+                    if self.display_queue.full():
+                        try:
+                            self.display_queue.get_nowait()
+                        except queue.Empty:
+                            pass
+                    self.display_queue.put_nowait(display_frame)
+                except queue.Full:
+                    pass
+
+                self.frame_queue.task_done()
             except queue.Empty:
-                if not self.running: break
+                time.sleep(0.001)
                 continue
-            display_frame = cv2.flip(frame.copy(), 1)
-            scale = self.process_width / frame.shape[1]
-            process_frame = cv2.resize(frame, (self.process_width, int(frame.shape[0] * scale)), interpolation=cv2.INTER_AREA)
-            process_frame = cv2.flip(process_frame, 1)
-            green_avg, face_detected_in_frame = self._process_mp_face(display_frame, process_frame)
-            current_time = time.time()
-            if face_detected_in_frame:
-                if not self.has_face: self.signals.face_detected.emit(True)
-                self.has_face = True
-                self.last_face_time = current_time
-            elif self.has_face and (current_time - self.last_face_time) > self.face_lost_threshold:
-                if self.has_face: self.signals.face_detected.emit(False)
-                self.has_face = False
-                self.smoothed_bbox = None
-            if green_avg is not None:
-                try: self.signal_queue.put_nowait((green_avg, timestamp))
-                except queue.Full: pass
-            self._add_info_to_frame(display_frame)
-            try: self.display_queue.put_nowait(display_frame)
-            except queue.Full:
-                try: self.display_queue.get_nowait()
-                except queue.Empty: pass
-                try: self.display_queue.put_nowait(display_frame)
-                except queue.Full: pass
-            self.frame_queue.task_done()
         print("ProcessThread stopped.")
         self.mp_face_detection.close()
 

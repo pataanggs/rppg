@@ -46,7 +46,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.audio_manager = AudioManager(self) 
         self.is_muted = self.audio_manager.is_muted
         self.is_recording = False
-        self.recorded_data = []
+        self.recorded_data = []  # Will store tuples of (timestamp, hr, resp)
+        self.resp_data = []  # Add buffer for respiratory data
         
         self._current_hr = 0.0 # Untuk menyimpan HR terakhir dari slot
         self._hr_valid = False # Untuk menyimpan validitas HR terakhir
@@ -245,8 +246,8 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
 
-    def update_heart_rate_slot(self, hr, is_valid, confidence, resp_signal=None):
-        """Update heart rate and respiratory signal"""
+    def update_heart_rate_slot(self, hr, is_valid, confidence, resp_signal):
+        """Update heart rate value and graph using new data."""
         self._current_hr = hr
         self._hr_valid = is_valid
 
@@ -268,8 +269,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.audio_manager.stop_sound('alarm')
 
             if self.is_recording:
-                current_time_ts = time.time()
-                self.recorded_data.append((current_time_ts, hr))
+                current_time = time.time()
+                # Store both HR and respiratory data
+                resp_value = resp_signal[-1] if resp_signal is not None and len(resp_signal) > 0 else 0
+                self.recorded_data.append((current_time, hr, resp_value))
             
             # Update the graph with both HR and respiratory data
             current_time = time.time()
@@ -382,26 +385,42 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage(f"Perekaman dihentikan. {len(self.recorded_data)} data poin direkam.")
     
     def export_data(self):
-        if not hasattr(self, 'recorded_data') or not self.recorded_data :
-            QtWidgets.QMessageBox.warning(self, 'Tidak Ada Data', 'Tidak ada data untuk diekspor. Mulai rekam dulu.')
+        if not self.recorded_data:
+            QtWidgets.QMessageBox.warning(self, 'No Data', 'No data available to export. Start recording first.')
             return
-        current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_filename = f'heart_rate_data_{current_date}.csv'
-        documents_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
-        default_path = os.path.join(documents_path, default_filename) if documents_path else default_filename
 
-        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Simpan Data Detak Jantung', default_path, 'CSV Files (*.csv)')
-        if not file_path: return
+        current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, 
+            'Save Heart Rate & Respiratory Data', 
+            f'vital_signs_data_{current_date}.csv', 
+            'CSV Files (*.csv)'
+        )
+
+        if not file_path:
+            return
+
         try:
             with open(file_path, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile); writer.writerow(['Timestamp', 'DateTime', 'HeartRate'])
-                for time_val, hr in self.recorded_data:
+                writer = csv.writer(csvfile)
+                writer.writerow(['Timestamp', 'DateTime', 'HeartRate', 'Respiration'])
+                
+                for time_val, hr, resp in self.recorded_data:
                     dt_str = datetime.fromtimestamp(time_val).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-                    writer.writerow([time_val, dt_str, hr])
-            QtWidgets.QMessageBox.information(self, 'Ekspor Berhasil', f'Data berhasil diekspor ke:\n{file_path}')
-            self.statusBar().showMessage(f"Data diekspor ke {file_path}")
+                    writer.writerow([time_val, dt_str, hr, resp])
+                    
+            QtWidgets.QMessageBox.information(
+                self, 
+                'Export Successful', 
+                f'Data successfully exported to:\n{file_path}'
+            )
+            self.statusBar().showMessage(f"Data exported to {file_path}")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, 'Error Ekspor', f'Terjadi error saat ekspor:\n{str(e)}')
+            QtWidgets.QMessageBox.critical(
+                self, 
+                'Export Error', 
+                f'An error occurred during export:\n{str(e)}'
+            )
 
     def clear_graph_data(self):
         reply = QMessageBox.question(self, "Hapus Data", "Anda yakin ingin menghapus semua data grafik?", 

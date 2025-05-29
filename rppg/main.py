@@ -1,6 +1,7 @@
 # rppg/main.py
 import sys
 import cv2 # Hanya untuk list_available_cameras awal
+from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog # Tambahkan QDialog
 from rppg.ui.main_window import MainWindow
 from rppg.ui.camera_selector import CameraSelector # Import kelasnya
@@ -19,6 +20,12 @@ def preliminary_camera_check():
 
 def main():
     app = QApplication(sys.argv)
+
+    # Initialize multimedia system
+    try:
+        dummy_player = QMediaPlayer()  # This will initialize the multimedia system
+    except Exception as e:
+        print(f"Multimedia initialization warning: {e}")
 
     if not preliminary_camera_check():
         QMessageBox.critical(None, "Error Kamera", "Tidak ada kamera yang terdeteksi. Aplikasi akan ditutup.")
