@@ -7,13 +7,13 @@ import numpy as np
 import queue
 from PyQt6.QtCore import pyqtSignal, QObject
 
-# GlobalSignals tetap sama
+# GlobalSignals
 class GlobalSignals(QObject):
     hr_update = pyqtSignal(float, bool, float) # HR, IsValid, Confidence
     face_detected = pyqtSignal(bool)
     signal_quality_update = pyqtSignal(float)
 
-# CaptureThread tetap sama (dari kodemu)
+# CaptureThread
 class CaptureThread(threading.Thread):
     def __init__(self, camera_index, frame_queue):
         super().__init__()
@@ -164,10 +164,6 @@ class ProcessThread(threading.Thread):
             
             sx, sy, sw, sh = map(int, self.smoothed_bbox) # Ini bbox wajah (hijau) yang sudah di-smooth
 
-            # --- Penyesuaian Posisi dan Ukuran ROI Dahi (Kuning) ---
-            # "box kuning kurang ke atas di dahi" -> fy perlu lebih kecil (naik)
-            # "box kurang tinggi" pada ROI juga bisa disesuaikan dengan fh_ratio
-            
             # Persentase offset Y dari atas bbox wajah (sx,sy). Lebih kecil = lebih ke atas.
             forehead_y_offset_ratio = 0.03  
             # Persentase tinggi ROI dahi relatif terhadap tinggi bbox wajah (sh)

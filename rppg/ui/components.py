@@ -3,10 +3,8 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtGui import QPainter, QColor, QPen
 from PyQt6.QtCore import Qt
 import numpy as np
-import time # Kita butuh time untuk logika buffer di HeartRateGraph
+import time 
 
-# Import MplCanvas dari plot_canvas.py kamu
-# Pastikan file plot_canvas.py ada di rppg/ui/plot_canvas.py
 from .plot_canvas import MplCanvas 
 
 class HeartRateDisplay(QtWidgets.QWidget):
@@ -39,7 +37,6 @@ class HeartRateGraph(QtWidgets.QWidget):
         self.time_buffer = [] 
         self.max_buffer_duration_seconds = 180 # Default 3 menit, akan diupdate oleh MainWindow
         # self.effective_fps_for_graph = 1 # Tidak terlalu krusial jika trimming berdasarkan durasi
-        # self.max_buffer_points = self.max_buffer_duration_seconds * self.effective_fps_for_graph # Bisa dihapus
 
     def update_graph_settings(self, max_time_seconds=None):
         """Dipanggil dari MainWindow saat time_range_combo berubah."""
@@ -133,9 +130,8 @@ class HeartRateGraph(QtWidgets.QWidget):
         if hasattr(self, 'canvas'):
             self.canvas.set_dark_mode(enabled)
 
-# --- Kelas ProgressCircleWidget kamu ---
+# --- Kelas ProgressCircleWidget ---
 class ProgressCircleWidget(QtWidgets.QWidget):
-    # ... (kodemu untuk ProgressCircleWidget tetap sama) ...
     def __init__(self, parent=None):
         super().__init__(parent)
         self._value = 0
