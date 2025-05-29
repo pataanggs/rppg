@@ -6,18 +6,32 @@ import numpy as np
 # import matplotlib.pyplot as plt # Tidak terpakai secara eksplisit di kelas ini
 
 class MplCanvas(FigureCanvas):
-    def __init__(self, parent=None, height=5, dark_mode=False):
-        self.fig = Figure(figsize=(8, height), dpi=100, constrained_layout=False) # constrained_layout=False dulu, lalu tight_layout
-        super().__init__(self.fig)
+    def __init__(self, parent=None, height=8, dark_mode=False):  # Increased height
+        # Set default values first
+        self.default_min = 40
+        self.default_max = 180
+        self.min_range = 60
+        self.tick_spacing = 10
         self.dark_mode = dark_mode
+
+        # Create figure with wider aspect ratio for side-by-side plots
+        self.fig = Figure(figsize=(12, height), dpi=100, constrained_layout=True)  # Changed width to 12
+        super().__init__(self.fig)
+        
         self._apply_styling()
-        self.ax1 = self.fig.add_subplot(211)  # Heart rate signal
-        self.ax2 = self.fig.add_subplot(212)  # Respiration signal
+        # Change subplot layout to side-by-side
+        self.ax1 = self.fig.add_subplot(121)  # Changed from 211 to 121
+        self.ax2 = self.fig.add_subplot(122)  # Changed from 212 to 122
+        
         self._initialize_plots()
         self._configure_plots()
-        self.fig.tight_layout(pad=2.0) # Panggil setelah subplot dibuat
+        
+        # Remove tight_layout since we're using constrained_layout
+        # self.fig.tight_layout(pad=2.0)
 
-
+        # Set both axes visible at start
+        self.ax2.set_visible(True)
+        
     def _apply_styling(self):
         if self.dark_mode:
             self.fig.patch.set_facecolor('#2E3440'); self.text_color = '#E5E9F0'
@@ -37,7 +51,7 @@ class MplCanvas(FigureCanvas):
         # Respiration signal plot
         self.line_resp, = self.ax2.plot([], [], '-', color=self.resp_color, linewidth=1.5, label='Sinyal Resp.')
         self.fill_resp = None  # Inisialisasi fill object sebagai None
-        self.ax2.set_visible(False) # Sembunyikan plot respirasi di awal jika tidak ada data
+        self.ax2.set_visible(True)  # Always show respiratory plot
 
 
     def _configure_plots(self):
@@ -62,75 +76,67 @@ class MplCanvas(FigureCanvas):
         self.ax2.legend(loc='upper right', fontsize=8, frameon=False)
     
     def update_plot(self, time_data, hr_data, resp_data=None, hr_peaks=None):
-        if not isinstance(time_data, np.ndarray): time_data = np.array(time_data)
-        if not isinstance(hr_data, np.ndarray): hr_data = np.array(hr_data)
-        if resp_data is not None and not isinstance(resp_data, np.ndarray): resp_data = np.array(resp_data)
-
         if len(time_data) == 0 or len(hr_data) == 0:
-            self.clear_data() # Atau return saja jika tidak ingin clear saat data kosong sementara
             return
             
-        time_plot = time_data
-        # Jika time_data adalah unix timestamp, buat relatif dari titik pertama data saat ini
-        if len(time_data) > 0 and time_data[0] > 1e9 : 
-            time_plot = time_data - time_data[0]
-
-        # --- Update Heart Rate Plot (ax1) ---
+        # Convert inputs to numpy arrays
+        time_data = np.array(time_data)
+        hr_data = np.array(hr_data)
+        
+        # Make time relative
+        time_plot = time_data - time_data[0]
+        
+        # Calculate visible window (last 10 seconds)
+        window_size = 10  # seconds
+        current_time = time_plot[-1]
+        x_min = max(0, current_time - window_size)
+        x_max = current_time + 1
+        
+        # Update HR plot
         self.line_rppg.set_data(time_plot, hr_data)
+        self.ax1.set_xlim(x_min, x_max)
         
-        # Hapus fill sebelumnya jika ada
-        if self.fill_rppg is not None:
-            self.fill_rppg.remove()
-            self.fill_rppg = None 
-        # Buat fill baru
-        if hr_data.size > 0:
-             # Gunakan baseline 0 atau nilai min dari data untuk fill
-            baseline_hr = 0 # atau np.min(hr_data) jika ingin fill dari min data
-            self.fill_rppg = self.ax1.fill_between(time_plot, baseline_hr, hr_data, alpha=0.2, color=self.hr_color, interpolate=True)
+        # Set y limits for HR with margins
+        visible_hr = hr_data[time_plot >= x_min]
+        if len(visible_hr) > 0:
+            hr_min = np.min(visible_hr)
+            hr_max = np.max(visible_hr)
+            hr_margin = max((hr_max - hr_min) * 0.2, 10)
+            self.ax1.set_ylim(hr_min - hr_margin, hr_max + hr_margin)
         
-        # Update peak markers
-        if hr_peaks is not None and len(hr_peaks) > 0:
-            peak_times_plot = [time_plot[i] for i in hr_peaks if 0 <= i < len(time_plot)]
-            peak_values_plot = [hr_data[i] for i in hr_peaks if 0 <= i < len(hr_data)]
-            if peak_times_plot and peak_values_plot: # Pastikan tidak kosong
-                self.line_hr_peaks.set_data(peak_times_plot, peak_values_plot)
-                self.line_hr_peaks.set_visible(True)
-            else:
-                self.line_hr_peaks.set_data([], [])
-                self.line_hr_peaks.set_visible(False)
-        else:
-            self.line_hr_peaks.set_data([], [])
-            self.line_hr_peaks.set_visible(False)
-        
-        self.ax1.relim()
-        self.ax1.autoscale_view()
-
-        # --- Update Respiration Plot (ax2) ---
-        if resp_data is not None and len(resp_data) == len(time_plot):
+        # Update respiratory plot
+        if resp_data is not None and len(resp_data) > 0:
             self.ax2.set_visible(True)
-            self.line_resp.set_data(time_plot, resp_data)
+            resp_data = np.array(resp_data)
+            
+            # Create time vector matching respiratory data length
+            if len(resp_data) != len(time_plot):
+                resp_time = np.linspace(time_plot[0], time_plot[-1], len(resp_data))
+            else:
+                resp_time = time_plot
+            
+            self.line_resp.set_data(resp_time, resp_data)
+            
+            # Set y limits for respiratory plot
+            resp_min, resp_max = np.min(resp_data), np.max(resp_data)
+            resp_margin = max((resp_max - resp_min) * 0.2, 0.1)
+            self.ax2.set_ylim(resp_min - resp_margin, resp_max + resp_margin)
+            
+            # Set same x limits for respiratory plot
+            self.ax2.set_xlim(x_min, x_max)
+            
+            # Update fill between with matching time vector
             if self.fill_resp is not None:
                 self.fill_resp.remove()
-                self.fill_resp = None
-            if resp_data.size > 0:
-                baseline_resp = 0 # atau np.min(resp_data)
-                self.fill_resp = self.ax2.fill_between(time_plot, baseline_resp, resp_data, alpha=0.2, color=self.resp_color, interpolate=True)
-            self.ax2.relim()
-            self.ax2.autoscale_view()
-        else:
-            self.line_resp.set_data([], [])
-            if self.fill_resp is not None:
-                self.fill_resp.remove()
-                self.fill_resp = None
-            self.ax2.set_visible(False) # Sembunyikan jika tidak ada data respirasi
-
-        # Pastikan legenda selalu ada setelah autoscale
-        self.ax1.legend(loc='upper right', fontsize=8, frameon=False)
-        if self.ax2.get_visible():
-            self.ax2.legend(loc='upper right', fontsize=8, frameon=False)
-
-        self.fig.tight_layout(pad=2.0) # Panggil lagi setelah data berubah untuk adjust layout
-        self.draw_idle() # Gunakan draw_idle untuk efisiensi
+            self.fill_resp = self.ax2.fill_between(
+                resp_time,
+                np.ones_like(resp_data) * (resp_min - resp_margin),
+                resp_data,
+                alpha=0.2,
+                color=self.resp_color
+            )
+        
+        self.draw_idle()
         
     def clear_data(self):
         self.line_rppg.set_data([], [])

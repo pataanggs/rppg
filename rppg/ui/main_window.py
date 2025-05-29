@@ -167,7 +167,7 @@ class MainWindow(QtWidgets.QMainWindow):
         graph_container.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding); graph_container.setMinimumHeight(220) # Pastikan tinggi minimal grafik
         graph_section_layout = QtWidgets.QVBoxLayout(graph_container); graph_section_layout.setContentsMargins(15, 15, 15, 15); graph_section_layout.setSpacing(10)
         graph_header = QtWidgets.QHBoxLayout(); chart_icon = QtWidgets.QLabel(); chart_pixmap = self._create_icon_pixmap("chart", 20, "#f38ba8"); chart_icon.setPixmap(chart_pixmap)
-        graph_title = QtWidgets.QLabel("Riwayat Detak Jantung"); graph_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #f5c2e7;")
+        graph_title = QtWidgets.QLabel("Riwayat Detak Jantung dan Respirasi"); graph_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #f5c2e7;")
         graph_header.addWidget(chart_icon); graph_header.addWidget(graph_title); graph_header.addStretch()
         time_range_label = QtWidgets.QLabel("Rentang:"); time_range_label.setStyleSheet("color: #a6adc8; font-size: 12px;")
         self.time_range_combo = QtWidgets.QComboBox(); self.time_range_combo.addItem("1 Menit", 60); self.time_range_combo.addItem("3 Menit", 180); self.time_range_combo.addItem("5 Menit", 300)
@@ -176,12 +176,12 @@ class MainWindow(QtWidgets.QMainWindow):
         graph_header.addWidget(time_range_label); graph_header.addWidget(self.time_range_combo)
         
         self.hr_graph = HeartRateGraph(dark_mode=True)
-        self.hr_graph.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding); self.hr_graph.setMinimumHeight(450)
+        self.hr_graph.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding); self.hr_graph.setMinimumHeight(250)
         
         graph_section_layout.addLayout(graph_header); graph_section_layout.addWidget(self.hr_graph, 1)
         
-        main_layout.addWidget(top_section_widget, 4) # Bagian atas 60%
-        main_layout.addWidget(graph_container, 6)  # Grafik 40%
+        main_layout.addWidget(top_section_widget, 5) # Bagian atas 60%
+        main_layout.addWidget(graph_container, 5)  # Grafik 40%
 
         self._setup_toolbar(); self.statusBar().showMessage("Siap - Menunggu inisialisasi kamera")
         self.session_timer = QtCore.QTimer(); self.session_timer.timeout.connect(self._update_session_time); 
@@ -245,12 +245,13 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
 
-    def update_heart_rate_slot(self, hr, is_valid, confidence):
+    def update_heart_rate_slot(self, hr, is_valid, confidence, resp_signal=None):
+        """Update heart rate and respiratory signal"""
         self._current_hr = hr
         self._hr_valid = is_valid
-        # self._confidence = confidence # Simpan jika perlu untuk ditampilkan
 
         if is_valid:
+            # Update HR display and other UI elements
             self.hr_display.set_heart_rate(hr)
             hr_color = get_heart_rate_color(hr) 
             self.hr_display.set_color(hr_color)
@@ -270,15 +271,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 current_time_ts = time.time()
                 self.recorded_data.append((current_time_ts, hr))
             
-            current_time_ts = time.time() 
-            self.hr_data.append(hr); self.hr_timestamps.append(current_time_ts)
-            if len(self.hr_data) > self.max_data_points: self.hr_data.pop(0); self.hr_timestamps.pop(0)
-            if len(self.hr_data) > 1: 
-                # Kirim batch data ke graph jika metode update_graph_batch ada di HeartRateGraph
-                if hasattr(self.hr_graph, 'update_graph_batch'):
-                    self.hr_graph.update_graph_batch(self.hr_data, self.hr_timestamps)
-                else: # Fallback ke update per data point jika HeartRateGraph diubah
-                    self.hr_graph.update_graph(hr, current_time_ts) # Jika hr_graph.update_graph hanya terima 1 data
+            # Update the graph with both HR and respiratory data
+            current_time = time.time()
+            self.hr_data.append(hr)
+            self.hr_timestamps.append(current_time)
+            
+            if len(self.hr_data) > self.max_data_points:
+                self.hr_data.pop(0)
+                self.hr_timestamps.pop(0)
+            
+            if len(self.hr_data) > 1:
+                self.hr_graph.update_plot(
+                    np.array(self.hr_timestamps),
+                    np.array(self.hr_data),
+                    resp_signal if resp_signal is not None else None
+                )
         else:
             self.hr_display.set_heart_rate(0) 
             self.status_label_main.setText("Menghitung HR..."); self.status_label_main.setStyleSheet("color: #cdd6f4; font-size:12px;")

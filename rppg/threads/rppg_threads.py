@@ -9,7 +9,8 @@ from PyQt6.QtCore import pyqtSignal, QObject
 
 # GlobalSignals
 class GlobalSignals(QObject):
-    hr_update = pyqtSignal(float, bool, float) # HR, IsValid, Confidence
+    # Update signal type hint for clarity
+    hr_update = pyqtSignal(float, bool, float, np.ndarray)  # HR, IsValid, Confidence, Resp_Signal
     face_detected = pyqtSignal(bool)
     signal_quality_update = pyqtSignal(float)
 
@@ -86,10 +87,13 @@ class ProcessThread(threading.Thread):
         self.process_height = 240
         self.show_face_rect = True
         self.current_hr_for_display = 0.0
+        self.resp_buffer = []
         self.signals.hr_update.connect(self._update_hr_for_display)
 
-    def _update_hr_for_display(self, hr, is_valid, confidence):
+    def _update_hr_for_display(self, hr, is_valid, confidence, resp_signal):
         self.current_hr_for_display = hr if is_valid else 0.0
+        if resp_signal is not None:
+            self.resp_buffer = resp_signal.tolist()
 
     def _process_mp_face(self, display_frame, process_frame):
         frame_rgb = cv2.cvtColor(process_frame, cv2.COLOR_BGR2RGB)
@@ -187,25 +191,41 @@ class AnalysisThread(threading.Thread):
         from rppg.signal.signal_processor import SignalProcessor
         self.signal_processor = SignalProcessor()
         self.running = True
+        
         while self.running:
-            try: signal_val, timestamp = self.signal_queue.get(block=True, timeout=1.0)
+            try:
+                signal_val, timestamp = self.signal_queue.get(block=True, timeout=1.0)
             except queue.Empty:
-                if not self.running: break
                 continue
-            self.buffer.append(signal_val); self.timestamps.append(timestamp)
+                
+            self.buffer.append(signal_val)
+            self.timestamps.append(timestamp)
+            
+            # Keep buffer size manageable
             while len(self.buffer) > self.window_size * 2:
-                self.buffer.pop(0); self.timestamps.pop(0)
-            current_time = time.time()
-            if len(self.buffer) >= self.window_size and \
-               (current_time - self.last_hr_update_time) >= self.hr_update_interval:
-                hr, confidence, quality = self.signal_processor.process(
-                    self.buffer[-self.window_size:], self.timestamps[-self.window_size:])
-                is_valid = False; current_hr = 0.0
-                if hr is not None and self.min_hr <= hr <= self.max_hr:
-                    current_hr = hr; is_valid = True
-                self.signals.hr_update.emit(current_hr, is_valid, confidence)
+                self.buffer.pop(0)
+                self.timestamps.pop(0)
+                
+            # Process when enough data
+            if len(self.buffer) >= self.window_size:
+                hr, confidence, quality, resp_signal = self.signal_processor.process(
+                    self.buffer[-self.window_size:],
+                    self.timestamps[-self.window_size:]
+                )
+                
+                # Ensure resp_signal is never None
+                if resp_signal is None:
+                    resp_signal = np.zeros(len(self.buffer[-self.window_size:]))
+                
+                is_valid = hr is not None and self.min_hr <= hr <= self.max_hr
+                self.signals.hr_update.emit(
+                    float(hr) if is_valid else 0.0,
+                    is_valid,
+                    float(confidence),
+                    resp_signal
+                )
                 self.signals.signal_quality_update.emit(quality)
-                self.last_hr_update_time = current_time
+            
             self.signal_queue.task_done()
         print("AnalysisThread stopped.")
 

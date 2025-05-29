@@ -42,6 +42,7 @@ class HeartRateGraph(QtWidgets.QWidget):
 
         # Buffer data untuk plotting
         self.hr_buffer = [] 
+        self.resp_buffer = [] # Tambahkan buffer untuk data respirasi
         self.time_buffer = [] 
         # max_buffer_points bisa diambil dari pengaturan atau combo box di MainWindow
         # Untuk sementara, kita set di sini, tapi idealnya bisa diubah
@@ -57,12 +58,14 @@ class HeartRateGraph(QtWidgets.QWidget):
         self.max_buffer_points = self.max_buffer_points_seconds * self.effective_fps_for_graph
 
 
-    def update_graph(self, hr_value, timestamp):
+    def update_graph(self, hr_value, timestamp, resp_value=None):
         """Menerima satu data point HR dan timestamp, lalu update MplCanvas."""
         if hr_value is None: return
 
         self.hr_buffer.append(hr_value)
         self.time_buffer.append(timestamp)
+        if resp_value is not None:
+            self.resp_buffer.append(resp_value) # Simpan data respirasi jika ada
 
         # Jaga ukuran buffer berdasarkan durasi waktu
         # Hapus data yang lebih tua dari max_buffer_points_seconds
@@ -75,6 +78,8 @@ class HeartRateGraph(QtWidgets.QWidget):
         while self.time_buffer and self.time_buffer[0] < cutoff_time:
             self.time_buffer.pop(0)
             self.hr_buffer.pop(0)
+            if self.resp_buffer: # Hapus juga data respirasi yang sudah tidak relevan
+                self.resp_buffer.pop(0)
         
         # Jaga juga agar jumlah poin tidak melebihi batas absolut (misal 300-500 poin agar tidak berat)
         # Ini bisa jadi redundant jika pemotongan berdasarkan waktu sudah efektif
@@ -82,11 +87,17 @@ class HeartRateGraph(QtWidgets.QWidget):
         while len(self.hr_buffer) > max_absolute_points:
             self.hr_buffer.pop(0)
             self.time_buffer.pop(0)
+            if self.resp_buffer: # Hapus juga dari buffer respirasi
+                self.resp_buffer.pop(0)
 
 
         if len(self.hr_buffer) > 1:
             # MplCanvas akan membuat waktu relatif dari timestamp pertama
-            self.canvas.update_plot(np.array(self.time_buffer), np.array(self.hr_buffer))
+            self.canvas.update_plot(np.array(self.time_buffer), np.array(self.hr_buffer), np.array(self.resp_buffer) if self.resp_buffer else None)
+
+    def update_plot(self, time_data, hr_data, resp_data=None):
+        """Update both heart rate and respiratory plots"""
+        self.canvas.update_plot(time_data, hr_data, resp_data)
 
     def update_graph_batch(self, hr_data_list, timestamp_list):
         """
@@ -118,7 +129,7 @@ class HeartRateGraph(QtWidgets.QWidget):
 
 
     def clear_graph(self):
-        self.hr_buffer = []; self.time_buffer = []
+        self.hr_buffer = []; self.resp_buffer = []; self.time_buffer = []
         self.canvas.clear_data()
 
     def set_y_range(self, min_y, max_y):
