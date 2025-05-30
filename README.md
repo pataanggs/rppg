@@ -23,37 +23,35 @@ The **rPPG Heart Rate Monitor** is an innovative, non-invasive application that 
 ## 📁 Project Structure
 
 ```plaintext
-rppg-project/
-├── .gitignore
-├── README.md
-├── requirements.txt
-├── run.py 
-├── LICENSE             # Main entry point
-├── rppg/
-│   ├── __init__.py
-│   ├── main.py        # Application initialization
-│   ├── assets/        # Static assets (e.g., audio files)
+rppg/
+├── rppg/                        # Direktori utama aplikasi rppg
+│   ├── pycache/
+│   ├── assets/                  # Berkas aset statis (misalnya suara alarm)
 │   │   └── alarm.wav
-│   ├── core/          # Core functionality
-│   │   ├── __init__.py
-│   │   ├── sound.py
-│   │   └── utils.py
-│   ├── signal/        # Signal processing modules
-│   │   ├── __init__.py
-│   │   ├── signal_processing.py
-│   │   └── signal_processor.py
-│   ├── threads/       # Thread management
-│   │   ├── __init__.py
-│   │   └── rppg_threads.py
-│   ├── ui/            # User interface components
-│   │   ├── __init__.py
-│   │   ├── camera_selector.py
-│   │   ├── components.py
-│   │   ├── main_window.py
-│   │   ├── plot_canvas.py
-│   │   ├── settings_dialog.py
-│   │   └── styles.py
-│   └── utils/         # Utility functions
+│   ├── core/                    # Modul inti aplikasi
+│   │   ├── init.py
+│   │   ├── sound.py             # Penanganan suara
+│   │   └── utils.py             # Fungsi utilitas umum
+│   ├── signal/                  # Modul pemrosesan sinyal
+│   │   ├── init.py
+│   │   ├── signal_processing.py # Logika pemrosesan sinyal
+│   │   └── signal_processor.py  # Implementasi prosesor sinyal
+│   ├── threads/                 # Modul untuk penanganan thread
+│   │   ├── init.py
+│   │   └── rppg_threads.py      # Implementasi thread khusus rppg
+│   └── ui/                      # Modul antarmuka pengguna (UI)
+│       ├── camera_selector.py   # Logika untuk memilih kamera
+│       ├── components.py        # Komponen UI yang dapat digunakan kembali
+│       ├── main_window.py       # Jendela utama aplikasi
+│       ├── plot_canvas.py       # Kanvas untuk plotting data
+│       ├── settings_dialog.py   # Dialog pengaturan
+│       ├── styles.py            # Definisi gaya UI
+│       └── init.py
+├── .gitignore                   # Daftar berkas/direktori yang diabaikan oleh Git
+├── LICENSE                      # Lisensi proyek
+├── README.md                    # Berkas dokumentasi utama proyek ini
+├── requirements.txt             # Daftar dependensi Python
+└── run.py                       # Skrip utama untuk menjalankan aplikasi
 ```
 
 ## 👥 Team Members
