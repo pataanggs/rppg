@@ -1,93 +1,127 @@
-# rPPG Heart Rate Monitor
+# RPPG Heart Rate Monitor and Respiration Rate Monitor
 
 <div align="center">
-  <img src="https://i.pinimg.com/474x/01/a1/31/01a131f0c5749c9daf0a45fcc7572c2e.jpg" alt="Logo sementara aja" width="120">
-  <h3>Non-invasive Heart Rate Monitoring Using Regular Camera</h3>
+  <img src="https://i.pinimg.com/474x/01/a1/31/01a131f0c5749c9daf0a45fcc7572c2e.jpg" alt="rPPG Logo sementara" width="120">
+  <h3>Non-Invasive Heart Rate Monitoring Using a Standard Camera</h3>
 </div>
 
-This repo contains code in Python for simulating rPPG using a webcam as an input.
+This repository contains Python code for a remote photoplethysmography (rPPG) heart rate  and respiration rate monitor that uses a standard webcam to measure heart rate in real-time.
 
 ## 📋 Description
 
-rPPG Heart Rate Monitor is an innovative application that uses remote photoplethysmography (rPPG) to measure heart rate in real-time using only a standard camera. The system analyzes subtle color changes in facial skin that occur with each heartbeat, allowing for contactless heart rate monitoring without specialized equipment.
+The **rPPG Heart Rate Monitor** is an innovative, non-invasive application that leverages remote photoplethysmography (rPPG) to estimate heart rate and respiration rate using a regular camera. By analyzing subtle color changes in facial skin caused by blood flow, and the movement of your shoulders for respiration, the system provides contactless heart rate and respiration rate monitoring without requiring specialized hardware.
 
 ### Key Features
 
-- 💓 Real-time heart rate monitoring with visual feedback
-- 📊 Dynamic signal visualization with modern UI
-- 📈 Historical heart rate data tracking and analysis
-- 📱 User-friendly interface with dark mode support
-- 🔍 Advanced signal processing algorithms
-- 💾 Data export functionality for further analysis
+- 💓 **Real-Time Heart Rate Monitoring**: Displays heart rate with live visual feedback.
+- 📊 **Dynamic Signal Visualization**: Modern UI with real-time signal plotting.
+- 📈 **Historical Data Tracking**: Stores and analyzes heart rate data over time.
+- 📱 **User-Friendly Interface**: Intuitive design with dark mode support.
+- 🔍 **Advanced Signal Processing**: Robust algorithms for accurate heart rate estimation.
+- 💾 **Data Export**: Save heart rate data for further analysis.
 
 ## 📁 Project Structure
 
 ```plaintext
-RPPG-PROJECT/
-├── assets/               # For images, fonts, etc.
-├── rppg/                 # Main application module (UI, threads, etc.)
+rppg-project/
+├── .gitignore
+├── README.md
+├── requirements.txt
+├── run.py 
+├── LICENSE             # Main entry point
+├── rppg/
 │   ├── __init__.py
-│   ├── main.py           # Entry point for the PyQt application
-│   ├── main_window.py    # MainWindow class definition
-│   ├── components.py     # Additional UI widgets (modular UI)
-│   ├── camera_selector.py# Dialog or logic for camera selection
-│   ├── plot_canvas.py    # Widget for plotting rPPG signals
-│   ├── styles.py         # PyQt style sheets
-│   └── threads/
-│       ├── __init__.py
-│       └── video_thread.py # QThread for video capture + rPPG processing
-├── signal/               # Module for signal processing
-│   ├── __init__.py
-│   └── processing.py     # rPPG signal extraction, filtering, CHROM, etc.
-├── core/                 # Supporting functions or non-GUI logic
-│   ├── __init__.py
-│   ├── sound.py          # Audio feedback (optional)
-│   └── utils.py          # General utility/helper functions
-├── requirements.txt      # Python dependencies
-├── readme.md             # Project documentation
-└── run.py                # Main entry point (optional)
+│   ├── main.py        # Application initialization
+│   ├── assets/        # Static assets (e.g., audio files)
+│   │   └── alarm.wav
+│   ├── core/          # Core functionality
+│   │   ├── __init__.py
+│   │   ├── sound.py
+│   │   └── utils.py
+│   ├── signal/        # Signal processing modules
+│   │   ├── __init__.py
+│   │   ├── signal_processing.py
+│   │   └── signal_processor.py
+│   ├── threads/       # Thread management
+│   │   ├── __init__.py
+│   │   └── rppg_threads.py
+│   ├── ui/            # User interface components
+│   │   ├── __init__.py
+│   │   ├── camera_selector.py
+│   │   ├── components.py
+│   │   ├── main_window.py
+│   │   ├── plot_canvas.py
+│   │   ├── settings_dialog.py
+│   │   └── styles.py
+│   └── utils/         # Utility functions
 ```
-
 
 ## 👥 Team Members
 
-| Full Name           | Student ID (NIM) | GitHub ID         |
-|---------------------|------------------|-------------------|
-| FATHAN ANDI KARTAGAMA | 122140055        | [@pataanggs](https://github.com/pataanggs)     |
-| RAHMAT ALDI NASDA   | 122140077        | [@urbaee](https://github.com/urbaee)         |
-| CHANDRA BUDI WIJAYA | 122140093        | [@ChandraBudiWijaya](https://github.com/ChandraBudiWijaya) |
+| Full Name             | Student ID | GitHub Profile                                   |
+|-----------------------|------------|--------------------------------------------------|
+| Fathan Andi Kartagama | 122140055  | [@pataanggs](https://github.com/pataanggs)       |
+| Rahmat Aldi Nasda     | 122140077  | [@urbaee](https://github.com/urbaee)             |
+| Chandra Budi Wijaya   | 122140093  | [@ChandraBudiWijaya](https://github.com/ChandraBudiWijaya) |
 
 ## 📝 Weekly Logbook
 
-| Week | Date        | Activities                                                                                                                                                                                                                                                                                                                                | Progress                                                              |
-|------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| 1    | May 3, 2024 | - Project initialization<br>- Basic folder structure setup<br>- Initial repository setup                                                                                                                                                                                                                                                  | 20% - Basic project structure and environment setup completed         |
-| 2    | May 5, 2024 | - Implemented face detection using MediaPipe<br>- Added camera selection<br>- Implemented rPPG heart rate estimation<br>- Created UI with heart rate graph<br>- Added alarm with mute functionality<br>- Implemented face detection feedback<br>- Added settings for signal processing and display                                     | 60% - Core functionality implemented including face detection, heart rate monitoring and UI features |
-| 3    | May 17, 2025 | - Extensive code refactoring for better organization<br>- Updated README documentation with detailed sections<br>- Added signal processing module for improved accuracy<br>- Implemented plot canvas for real-time visualization<br>- Created utils module for shared functionality<br>- Added camera selector interface<br>- Improved code structure and maintainability | 80% - Major refactoring completed with enhanced visualization, documentation and code organization |
-| 4    | May 25, 2025 | - Working on report for initiation<br>- Removing redundant files. | 85% - Initiation of the report and also some maintenance. |
-| 5    | May 28-29, 2025 | - Refactoring code<br>- Fixing issue<br>- Optimizing box and sound function<br>- Adding respiration plot<br>- Fixing export function<br>- Added box respiration and bandpass filtering. | 95% - Implemented major enhancements through multiple code refinements and optimizations to improve performance and maintainability. |
+| Week | Date            | Activities                                                                 | Progress |
+|------|-----------------|---------------------------------------------------------------------------|----------|
+| 1    | May 3, 2024     | Initialized project, set up folder structure, and created repository.      | 20% - Basic structure and environment established. |
+| 2    | May 5, 2024     | Implemented face detection (MediaPipe), camera selection, rPPG estimation, UI with heart rate graph, alarm with mute, and settings panel. | 60% - Core functionality and UI completed. |
+| 3    | May 17, 2025    | Refactored code, updated README, added signal processing module, plot canvas, utils module, camera selector, and improved maintainability. | 80% - Enhanced code organization and visualization. |
+| 4    | May 25, 2025    | Drafted initial report and removed redundant files.                       | 85% - Report initiated, minor maintenance completed. |
+| 5    | May 28–29, 2025 | Refactored code, fixed issues, optimized box and sound functions, added respiration plot, improved export, and implemented bandpass filtering. | 95% - Major performance and feature enhancements. |
+| 6    | May 30, 2025    | Finalized project and completed report in Overleaf.                       | 100% - Project and documentation completed. |
 
 ## 💻 Installation
 
 ### Prerequisites
-- Python 3.8+
-- Webcam or integrated camera
-- Windows, macOS, or Linux operating system
 
-### Setup
-1. Clone this repository:
+- **Python**: Version 3.8 or higher
+- **Webcam**: Integrated or external camera
+- **Operating System**: Windows, macOS, or Linux
+
+### Setup Instructions
+
+1. **Clone the Repository**:
    ```bash
-   git clone [https://github.com/yourusername/rppg-heart-rate-monitor.git](https://github.com/yourusername/rppg-heart-rate-monitor.git)
-   cd rppg-heart-rate-monitor
+   git clone https://github.com/pataanggs/rppg.git
+   cd rppg
+   ```
 
-2. Install the dependencies by using:
+2. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
-   
-   However, we recommend you to use a virtual environment like uv. If you are using uv, you can copy this code
-
+   ```
+   For a more efficient setup, we recommend using the `uv` virtual environment tool:
+   ```bash
    uv pip install -r requirements.txt
+   ```
+   Don't have `uv` installed? Follow the [Installation | uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-3. Run the application:
-    ```bash
-    python run.py
+3. **Run the Application**:
+   ```bash
+   python run.py
+   ```
+
+## 🚀 Usage
+
+1. Launch the application using `python run.py`.
+2. Select a webcam from the camera selector interface.
+3. Ensure your face is well-lit and visible to the camera.
+4. The application will display real-time heart rate, respiration rate data and visualizations.
+5. Use the settings dialog to adjust signal processing parameters or enable/disable features like alarms.
+6. Export heart rate data for further analysis using the export functionality.
+
+## 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## 🙌 Acknowledgments
+
+- [MediaPipe](https://mediapipe.dev/) for face detection capabilities.
+- The open-source community for providing valuable libraries and tools.
+
+---
