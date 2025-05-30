@@ -1,15 +1,17 @@
 # RPPG Heart Rate Monitor and Respiration Rate Monitor
 
 <div align="center">
-  <img src="https://i.pinimg.com/474x/01/a1/31/01a131f0c5749c9daf0a45fcc7572c2e.jpg" alt="rPPG Logo sementara" width="120">
-  <h3>Non-Invasive Heart Rate Monitoring Using a Standard Camera</h3>
+  <img src="rppg/assets/banner-rppg.png" alt="RPPG Heart Rate Monitor Banner" width="1920">
 </div>
 
-This repository contains Python code for a remote photoplethysmography (rPPG) heart rate  and respiration rate monitor that uses a standard webcam to measure heart rate in real-time.
+<div align="justify">
+This repository contains Python code for a remote photoplethysmography (rPPG) heart rate and respiration rate monitor that uses a standard webcam to measure heart rate in real-time.
+</div>
 
 ## 📋 Description
-
+<div align="justify">
 The **rPPG Heart Rate Monitor** is an innovative, non-invasive application that leverages remote photoplethysmography (rPPG) to estimate heart rate and respiration rate using a regular camera. By analyzing subtle color changes in facial skin caused by blood flow, and the movement of your shoulders for respiration, the system provides contactless heart rate and respiration rate monitoring without requiring specialized hardware.
+</div>
 
 ### Key Features
 
