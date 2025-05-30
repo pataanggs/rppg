@@ -10,7 +10,7 @@ This repository contains Python code for a remote photoplethysmography (rPPG) he
 
 ## 📋 Description
 <div align="justify">
-The **rPPG Heart Rate Monitor** is an innovative, non-invasive application that leverages remote photoplethysmography (rPPG) to estimate heart rate and respiration rate using a regular camera. By analyzing subtle color changes in facial skin caused by blood flow, and the movement of your shoulders for respiration, the system provides contactless heart rate and respiration rate monitoring without requiring specialized hardware.
+The <strong> rPPG Heart Rate and Respiration Rate Monitor </strong> is an innovative, non-invasive application that leverages remote photoplethysmography (rPPG) to estimate heart rate and respiration rate using a regular camera. By analyzing subtle color changes in facial skin caused by blood flow, and the movement of your shoulders for respiration, the system provides contactless heart rate and respiration rate monitoring without requiring specialized hardware.
 </div>
 
 ### Key Features
@@ -117,11 +117,31 @@ rppg/
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License.
 
 ## 🙌 Acknowledgments
 
 - [MediaPipe](https://mediapipe.dev/) for face detection capabilities.
 - The open-source community for providing valuable libraries and tools.
+
+## 📚 References
+
+This project was developed based on research from the following academic papers:
+
+1. Chen, W., Yi, Z., Lim, L. J. R., Lim, R. Q. R., Zhang, A., Qian, Z., Huang, J., He, J., & Liu, B. (2024). Deep learning and remote photoplethysmography powered advancements in contactless physiological measurement. *Frontiers in Bioengineering and Biotechnology, 12*, 1420100. [Access Paper](https://www.frontiersin.org/articles/10.3389/fbioe.2024.1420100)
+
+2. Pratikno, H., Jaya, T. S., Oktarina, E. S., & Philbert, N. (2024). Deteksi Detak Jantung Menggunakan Remote Photoplethysmograph Dengan Perubahan Jarak Dan Jenis Kamera Secara Dinamis. *Jurnal Teknologi Informasi dan Ilmu Komputer (JTIIK), 11*(2), 401-410. [Access Paper](https://jtiik.ub.ac.id/index.php/jtiik/article/view/7365)
+
+3. Sinhal, R., Singh, K., & Raghuwanshi, M. M. (2020). An Overview of Remote Photoplethysmography Methods for Vital Sign Monitoring. In *Advances in Intelligent Systems and Computing*. Springer Nature Singapore Pte Ltd. [Access Paper](https://link.springer.com/chapter/10.1007/978-981-15-0829-5_27)
+
+4. Goel, A., Gupta, N., Zehra, A., Raj, V., & Malik, A. (2023). REAL TIME HEART RATE MONITORING USING WEB-CAMERA. *Int. J. Adv. Res., 11*(04), 1264-1277. [Access Paper](https://www.journalijar.com/article/40599/real-time-heart-rate-monitoring-using-web-camera/)
+
+5. Park, J., Seok, H. S., Kim, S.-S., & Shin, H. (2022). Photoplethysmogram Analysis and Applications: An Integrative Review. *Frontiers in Physiology, 12*, 808451. [Access Paper](https://www.frontiersin.org/articles/10.3389/fphys.2021.808451)
+
+6. Mejía-Mejía, E., Allen, J., Budidha, K., El-Hajj, C., Kyriacou, P. A., & Charlton, P. H. (2020). Photoplethysmography Signal Processing and Synthesis. In *Photoplethysmography* (pp. 3-52). Elsevier. [Access Paper](https://www.sciencedirect.com/science/article/pii/B9780128157091000019)
+
+7. Nowara, E. M., Marks, T. K., Mansour, H., & Veeraraghavan, A. (2021). Robust algorithm for remote photoplethysmography in realistic conditions. *Image and Vision Computing, 107*, 104117. [Access Paper](https://www.sciencedirect.com/science/article/abs/pii/S1051200420300828)
+
+8. Bachu, V. K. K. S. d. S. S. P. (2019). An Overview of Remote Photoplethysmography Methods for Vital Sign Monitoring. In *2019 International Conference on Communication and Signal Processing (ICCSP)* (pp. 0104-0108). IEEE. [Access Paper](https://ieeexplore.ieee.org/document/8698009)
 
 ---
